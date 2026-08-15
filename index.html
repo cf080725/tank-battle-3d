@@ -2221,42 +2221,266 @@ function clearBoss() {
   updateBossHud();
 }
 /* ===========================================================================
-   5.5 暂停、移动端双摇杆与动态性能保护
+   5.5 暂停、移动端触控摇杆、全屏滑动视角控制与动态性能保护
    =========================================================================== */
 state.paused = false;
 const touchControls = {
   isTouchDevice: ('ontouchstart' in window) || navigator.maxTouchPoints > 0,
   leftJoy: { active: false, pointerId: null, startX: 0, startY: 0, dirX: 0, dirY: 0 },
-  rightJoy: { active: false, pointerId: null, startX: 0, startY: 0, aimAngle: 0, isFiring: false }
+  touchLook: { active: false, pointerId: null, lastX: 0, lastY: 0 },
+  yawOffset: 0,
+  pitchOffset: 0
 };
 const performanceAdaptive = { accumulator: 0, samples: 0, total: 0, pixelRatio: Math.min(devicePixelRatio, 2), update(dt) { this.accumulator += dt; this.total += dt; this.samples++; if (this.accumulator < 2) return; const fps = this.samples / this.total; if (fps < 44) this.pixelRatio = Math.max(0.85, this.pixelRatio - 0.2); else if (fps > 58) this.pixelRatio = Math.min(Math.min(devicePixelRatio, 2), this.pixelRatio + 0.1); renderer.setPixelRatio(this.pixelRatio); this.accumulator = 0; this.samples = 0; this.total = 0; } };
 
 function ensureControlUi() {
   if (document.querySelector('#pause-layer')) return;
   const style = document.createElement('style');
-  style.textContent = '#pause-layer{position:fixed;inset:0;z-index:45;display:none;place-items:center;background:rgba(3,9,12,.78);backdrop-filter:blur(8px)}#pause-layer .pause-panel{width:min(340px,calc(100vw - 32px));padding:24px;background:#111c1a;border:1px solid rgba(80,227,164,.38);text-align:center;color:#e9f4ef}#pause-layer h2{margin:0 0 16px;color:#50e3a4;font-size:20px}#pause-layer button{display:block;width:100%;margin-top:8px;min-height:46px;border:1px solid rgba(140,180,165,.32);background:#18302a;color:#e9f4ef;font-weight:700;cursor:pointer}#touch-controls{position:fixed;inset:0;z-index:19;display:none;pointer-events:none}.joystick{position:absolute;bottom:26px;width:124px;height:124px;border:1px solid rgba(80,227,164,.5);border-radius:50%;background:rgba(8,20,22,.35);box-shadow:inset 0 0 18px rgba(80,227,164,.18);pointer-events:auto;touch-action:none}.joystick.left{left:22px}.joystick.right{right:22px}.joystick i{position:absolute;left:38px;top:38px;width:46px;height:46px;border-radius:50%;background:rgba(80,227,164,.35);border:1px solid #50e3a4;transform:translate(0,0);pointer-events:none}@media(max-width:768px){#touch-controls{display:block}#hud{padding:12px}.brand-card{transform:scale(.86);transform-origin:top left}.stats-board{transform:scale(.82);transform-origin:top right}.unit-status{min-width:0;width:calc(100vw - 24px)}.skills-row{padding-right:8px}.bottom-bar{align-items:flex-end}.radar-box{display:none}}';
+  style.textContent = `
+    #pause-layer {
+      position: fixed; inset: 0; z-index: 55; display: none; place-items: center;
+      background: rgba(3,9,12,0.85); backdrop-filter: blur(10px);
+    }
+    #pause-layer .pause-panel {
+      width: min(340px, calc(100vw - 32px)); padding: 24px;
+      background: #111c1a; border: 1px solid rgba(80,227,164,0.4); text-align: center; color: #e9f4ef; border-radius: 8px;
+    }
+    #pause-layer h2 { margin: 0 0 16px; color: #50e3a4; font-size: 20px; letter-spacing: 1px; }
+    #pause-layer button {
+      display: block; width: 100%; margin-top: 10px; min-height: 46px;
+      border: 1px solid rgba(140,180,165,0.35); background: #18302a; color: #e9f4ef;
+      font-weight: 700; font-size: 15px; border-radius: 4px; cursor: pointer; transition: background 0.2s;
+    }
+    #pause-layer button:active { background: #23483f; }
+
+    /* 移动端全屏触控层 */
+    #touch-controls {
+      position: fixed; inset: 0; z-index: 20; display: none; pointer-events: none; touch-action: none;
+    }
+    @media (max-width: 900px), (hover: none) and (pointer: coarse) {
+      #touch-controls { display: block; }
+      #hud { padding: 10px; }
+      .brand-card { transform: scale(0.82); transform-origin: top left; }
+      .stats-board { transform: scale(0.8); transform-origin: top right; }
+      .unit-status { width: calc(100vw - 24px); }
+      .bottom-bar { align-items: flex-end; }
+      .radar-box { display: none; }
+    }
+
+    /* 左侧虚拟底盘摇杆 */
+    .joystick-zone {
+      position: absolute; bottom: 26px; left: 22px; width: 130px; height: 130px;
+      border-radius: 50%; background: radial-gradient(circle, rgba(12,28,26,0.65) 0%, rgba(4,14,16,0.85) 100%);
+      border: 2px solid rgba(80,227,164,0.6); box-shadow: 0 0 18px rgba(80,227,164,0.3), inset 0 0 20px rgba(80,227,164,0.2);
+      pointer-events: auto; touch-action: none; display: flex; align-items: center; justify-content: center;
+    }
+    .joystick-zone::before {
+      content: ''; position: absolute; width: 68%; height: 68%; border-radius: 50%;
+      border: 1px dashed rgba(80,227,164,0.4); pointer-events: none;
+    }
+    .joystick-zone::after {
+      content: '底盘移动'; position: absolute; bottom: -20px; font-size: 11px; color: rgba(80,227,164,0.8);
+      letter-spacing: 1px; font-weight: bold; pointer-events: none;
+    }
+    .joystick-knob {
+      position: absolute; width: 52px; height: 52px; border-radius: 50%;
+      background: radial-gradient(circle, #50e3a4 0%, #175438 100%);
+      border: 2px solid #a7f3d0; box-shadow: 0 0 16px rgba(80,227,164,0.8);
+      pointer-events: none; transform: translate(0, 0); will-change: transform;
+    }
+
+    /* 右侧作战按键集群 */
+    .mobile-action-cluster {
+      position: absolute; bottom: 24px; right: 20px; display: flex; align-items: flex-end; gap: 14px;
+      pointer-events: auto; touch-action: none;
+    }
+    .mobile-sub-actions {
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+    }
+    .mobile-btn {
+      border: none; outline: none; border-radius: 50%; color: #fff; font-family: inherit; font-weight: 700;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+      touch-action: none; user-select: none; -webkit-user-select: none; transition: transform 0.08s, filter 0.12s;
+    }
+    .mobile-btn:active { transform: scale(0.92); filter: brightness(1.25); }
+    .mobile-btn.fire {
+      width: 78px; height: 78px;
+      background: radial-gradient(circle, #ff4d4f 0%, #991b1b 100%);
+      border: 2.5px solid #ff7875;
+      box-shadow: 0 0 22px rgba(255, 77, 79, 0.75), 0 4px 14px rgba(0,0,0,0.6);
+    }
+    .mobile-btn.fire span { font-size: 24px; line-height: 1; }
+    .mobile-btn.fire b { font-size: 13px; margin-top: 2px; }
+    
+    .mobile-btn.sub {
+      width: 50px; height: 50px; border: 1.5px solid rgba(255,255,255,0.3);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .mobile-btn.sub.smoke {
+      background: radial-gradient(circle, #38d9f5 0%, #0e7490 100%);
+      border-color: #7dd3fc; box-shadow: 0 0 14px rgba(56, 217, 245, 0.45);
+    }
+    .mobile-btn.sub.smoke span { font-size: 18px; line-height: 1; }
+    .mobile-btn.sub.smoke b { font-size: 10px; }
+
+    .mobile-btn.sub.ult {
+      background: radial-gradient(circle, #f5c842 0%, #b45309 100%);
+      border-color: #fde047; box-shadow: 0 0 16px rgba(245, 200, 66, 0.55);
+    }
+    .mobile-btn.sub.ult span { font-size: 18px; line-height: 1; }
+    .mobile-btn.sub.ult b { font-size: 10px; }
+
+    /* 移动端顶部快捷控制栏 (暂停/号角) */
+    .mobile-top-bar {
+      position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; pointer-events: auto; z-index: 30;
+    }
+    .mobile-icon-btn {
+      width: 40px; height: 40px; border-radius: 50%; background: rgba(14,28,30,0.85);
+      border: 1px solid rgba(80,227,164,0.45); color: #50e3a4; font-size: 16px; font-weight: bold;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .mobile-icon-btn:active { background: rgba(24,48,44,0.95); transform: scale(0.94); }
+  `;
   document.head.appendChild(style);
-  const pause = document.createElement('section'); pause.id = 'pause-layer'; pause.innerHTML = '<div class="pause-panel"><h2>战术暂停</h2><button id="resume-game">继续作战</button><button id="retry-game">重新整备</button><button id="quit-game">返回战区菜单</button></div>'; document.body.appendChild(pause);
+
+  const pause = document.createElement('section');
+  pause.id = 'pause-layer';
+  pause.innerHTML = '<div class="pause-panel"><h2>战术暂停</h2><button id="resume-game">继续作战</button><button id="retry-game">重新整备</button><button id="quit-game">返回战区菜单</button></div>';
+  document.body.appendChild(pause);
   pause.querySelector('#resume-game').onclick = () => togglePause(false);
   pause.querySelector('#retry-game').onclick = () => { togglePause(false); reset(); state.run = true; overlay.style.display = 'none'; };
   pause.querySelector('#quit-game').onclick = () => { togglePause(false); finish(false); };
-  const touch = document.createElement('section'); touch.id = 'touch-controls'; touch.innerHTML = '<div class="joystick left" id="left-joy"><i></i></div><div class="joystick right" id="right-joy"><i></i></div>'; document.body.appendChild(touch);
-  bindJoystick(document.querySelector('#left-joy'), touchControls.leftJoy, false);
-  bindJoystick(document.querySelector('#right-joy'), touchControls.rightJoy, true);
+
+  const touch = document.createElement('section');
+  touch.id = 'touch-controls';
+  touch.innerHTML = `
+    <div class="joystick-zone" id="left-joy"><div class="joystick-knob"></div></div>
+    <div class="mobile-action-cluster">
+      <div class="mobile-sub-actions">
+        <button class="mobile-btn sub ult" id="mobile-ult-btn" title="歼灭风暴"><span>⚡</span><b>风暴</b></button>
+        <button class="mobile-btn sub smoke" id="mobile-smoke-btn" title="战术烟幕"><span>💨</span><b>烟幕</b></button>
+      </div>
+      <button class="mobile-btn fire" id="mobile-fire-btn" title="主炮开火"><span>🔥</span><b>开火</b></button>
+    </div>
+    <div class="mobile-top-bar">
+      <button class="mobile-icon-btn" id="mobile-bugle-btn" title="吹响冲锋号">🎺</button>
+      <button class="mobile-icon-btn" id="mobile-pause-btn" title="暂停游戏">⏸️</button>
+    </div>
+  `;
+  document.body.appendChild(touch);
+
+  // 绑定左侧虚拟摇杆
+  bindLeftJoystick(document.querySelector('#left-joy'), touchControls.leftJoy);
+
+  // 绑定右侧开火按钮
+  const fireBtn = document.querySelector('#mobile-fire-btn');
+  fireBtn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    key.Mouse = true;
+    if (navigator.vibrate) navigator.vibrate(20);
+  });
+  const stopFire = e => { e.preventDefault(); key.Mouse = false; };
+  fireBtn.addEventListener('pointerup', stopFire);
+  fireBtn.addEventListener('pointercancel', stopFire);
+
+  // 绑定烟幕与大招
+  document.querySelector('#mobile-smoke-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    triggerTacticalSupport('smoke');
+  });
+  document.querySelector('#mobile-ult-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    if (state.run) triggerUltimate();
+  });
+  document.querySelector('#mobile-bugle-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    historicAudio.playBugle();
+  });
+  document.querySelector('#mobile-pause-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    togglePause();
+  });
+
+  // 全屏触控拖拽旋转视角 (Screen Touch View Orbit)
+  bindScreenTouchLook();
 }
 
-function bindJoystick(element, control, aiming) {
-  const knob = element.querySelector('i');
+function bindLeftJoystick(element, control) {
+  const knob = element.querySelector('.joystick-knob');
   const update = event => {
-    const rect = element.getBoundingClientRect(); const dx = event.clientX - (rect.left + rect.width / 2); const dy = event.clientY - (rect.top + rect.height / 2); const length = Math.min(46, Math.hypot(dx, dy)); const angle = Math.atan2(dy, dx); const nx = Math.cos(angle) * length, ny = Math.sin(angle) * length;
+    const rect = element.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = event.clientX - cx;
+    const dy = event.clientY - cy;
+    const maxRadius = 48;
+    const distance = Math.min(maxRadius, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const nx = Math.cos(angle) * distance;
+    const ny = Math.sin(angle) * distance;
     knob.style.transform = `translate(${nx}px,${ny}px)`;
-    if (aiming) { control.aimAngle = Math.atan2(nx, -ny); control.isFiring = true; player.turretTarget = control.aimAngle; key.Mouse = true; }
-    else { control.dirX = nx / 46; control.dirY = ny / 46; }
+    control.dirX = nx / maxRadius; // 右正左负
+    control.dirY = ny / maxRadius; // 下正上负
   };
-  element.addEventListener('pointerdown', event => { event.preventDefault(); control.active = true; control.pointerId = event.pointerId; element.setPointerCapture(event.pointerId); update(event); });
-  element.addEventListener('pointermove', event => { if (control.active && event.pointerId === control.pointerId) update(event); });
-  const release = event => { if (event.pointerId !== control.pointerId) return; control.active = false; control.pointerId = null; knob.style.transform = 'translate(0,0)'; if (aiming) { control.isFiring = false; key.Mouse = false; } else { control.dirX = 0; control.dirY = 0; } };
-  element.addEventListener('pointerup', release); element.addEventListener('pointercancel', release);
+
+  element.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    control.active = true;
+    control.pointerId = event.pointerId;
+    element.setPointerCapture(event.pointerId);
+    update(event);
+  });
+
+  element.addEventListener('pointermove', event => {
+    if (control.active && event.pointerId === control.pointerId) update(event);
+  });
+
+  const release = event => {
+    if (event.pointerId !== control.pointerId) return;
+    control.active = false;
+    control.pointerId = null;
+    knob.style.transform = 'translate(0,0)';
+    control.dirX = 0;
+    control.dirY = 0;
+  };
+  element.addEventListener('pointerup', release);
+  element.addEventListener('pointercancel', release);
+}
+
+function bindScreenTouchLook() {
+  window.addEventListener('pointerdown', event => {
+    if (!state.run || state.paused) return;
+    // 如果点击在摇杆、按键、弹窗或 HUD 按钮上，不触发屏幕视角滑动
+    if (event.target.closest('#left-joy, .mobile-action-cluster, .mobile-top-bar, #pause-layer, #upgrade-modal, #medal-modal, #hud-top-bar, .menu-btn, button, select')) return;
+    touchControls.touchLook.active = true;
+    touchControls.touchLook.pointerId = event.pointerId;
+    touchControls.touchLook.lastX = event.clientX;
+    touchControls.touchLook.lastY = event.clientY;
+  }, { passive: false });
+
+  window.addEventListener('pointermove', event => {
+    if (touchControls.touchLook.active && event.pointerId === touchControls.touchLook.pointerId) {
+      const dx = event.clientX - touchControls.touchLook.lastX;
+      const dy = event.clientY - touchControls.touchLook.lastY;
+      touchControls.touchLook.lastX = event.clientX;
+      touchControls.touchLook.lastY = event.clientY;
+
+      // 水平滑动旋转视角 (Yaw)
+      touchControls.yawOffset -= dx * 0.007;
+      // 垂直滑动微调仰角 (Pitch)
+      touchControls.pitchOffset = THREE.MathUtils.clamp(touchControls.pitchOffset - dy * 0.0035, -0.4, 0.45);
+    }
+  }, { passive: false });
+
+  const releaseTouchLook = event => {
+    if (event.pointerId === touchControls.touchLook.pointerId) {
+      touchControls.touchLook.active = false;
+      touchControls.touchLook.pointerId = null;
+    }
+  };
+  window.addEventListener('pointerup', releaseTouchLook);
+  window.addEventListener('pointercancel', releaseTouchLook);
 }
 
 function togglePause(force) {
@@ -3308,9 +3532,9 @@ function update(dt) {
   if (player.energy >= player.maxEnergy && !player.ultimateAnnounced) { radio.speak('ULTIMATE_READY', 12); player.ultimateAnnounced = true; }
   if (player.energy < player.maxEnergy - 1) player.ultimateAnnounced = false;
 
-  // 玩家移动与履带/负重轮旋转
+  // 玩家移动与履带/负重轮旋转 (纠正摇杆左右转向方向)
   const drive = THREE.MathUtils.clamp((key.KeyW ? 1 : 0) - (key.KeyS ? 1 : 0) - touchControls.leftJoy.dirY, -1, 1);
-  const turn = THREE.MathUtils.clamp((key.KeyA ? 1 : 0) - (key.KeyD ? 1 : 0) + touchControls.leftJoy.dirX, -1, 1);
+  const turn = THREE.MathUtils.clamp((key.KeyA ? 1 : 0) - (key.KeyD ? 1 : 0) - touchControls.leftJoy.dirX, -1, 1);
 
   // 平滑响应让坦克保留重量感，同时避免按键造成瞬时满速和急转。
   player.speed = smoothTo(player.speed, drive * 7.4 * weatherSystem.speedMultiplier * player.speedMultiplier, drive === 0 ? 11.5 : 7.5, dt);
@@ -3887,12 +4111,13 @@ function animate() {
   snowGeo.attributes.position.needsUpdate = true;
 
   const target = player.o ? player.o.position : new THREE.Vector3();
-  // 相机仅跟随车体；让它跟随炮塔会改变鼠标射线，形成炮塔反复修正的摆动。
-  const desiredCameraYaw = player.angle;
-  cameraYaw = turnTo(cameraYaw, desiredCameraYaw, dt * 2.2);
+  // 相机跟随战车朝向与屏幕触摸滑动视角 (Yaw & Pitch)
+  const desiredCameraYaw = player.angle + touchControls.yawOffset;
+  cameraYaw = THREE.MathUtils.lerp(cameraYaw, desiredCameraYaw, 1 - Math.exp(-dt * 6.5));
 
+  const pitchHeight = 5.4 + touchControls.pitchOffset * 4.0;
   const aim = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
-  const desiredCamPos = target.clone().add(aim.clone().multiplyScalar(-9.5)).add(new THREE.Vector3(0, 5.4, 0));
+  const desiredCamPos = target.clone().add(aim.clone().multiplyScalar(-9.5)).add(new THREE.Vector3(0, pitchHeight, 0));
 
   if (cameraShake.trauma > 0) {
     cameraShake.trauma = Math.max(0, cameraShake.trauma - dt * 2.0);
@@ -3902,8 +4127,13 @@ function animate() {
     desiredCamPos.z += (Math.random() * 2 - 1) * shakePower;
   }
 
-  camera.position.lerp(desiredCamPos, 1 - Math.exp(-dt * 3.8));
-  camera.lookAt(target.clone().add(aim.multiplyScalar(3.2)).add(new THREE.Vector3(0, 1.2, 0)));
+  camera.position.lerp(desiredCamPos, 1 - Math.exp(-dt * 4.5));
+  camera.lookAt(target.clone().add(aim.multiplyScalar(3.6)).add(new THREE.Vector3(0, 1.2 + touchControls.pitchOffset * 1.5, 0)));
+
+  // 在移动端或屏幕触控旋转视角时，炮塔自动对准当前视野中心方向
+  if (touchControls.isTouchDevice || touchControls.touchLook.active || touchControls.yawOffset !== 0) {
+    player.turretTarget = touchControls.yawOffset;
+  }
 
   performanceAdaptive.update(dt);
   renderer.render(scene, camera);
