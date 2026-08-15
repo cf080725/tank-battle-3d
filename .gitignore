@@ -1,0 +1,12 @@
+# System & Editor
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.vscode/
+.idea/
+
+# Python cache & temp
+__pycache__/
+*.pyc
+.venv/
