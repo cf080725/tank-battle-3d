@@ -53,6 +53,76 @@ canvas#game-canvas {
   z-index: 1;
 }
 
+/* 启动预处理：覆盖战场，直到资源和渲染管线均准备完成。 */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 13, 16, 0.98);
+  transition: opacity 0.32s ease, visibility 0.32s ease;
+}
+#loading-screen.is-complete {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.loading-panel {
+  width: min(430px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(80, 227, 164, 0.55);
+  background: rgba(10, 27, 27, 0.96);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.56), inset 0 0 26px rgba(80, 227, 164, 0.05);
+}
+.loading-kicker {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+.loading-title {
+  margin-top: 9px;
+  color: #f5c842;
+  font-size: 24px;
+  font-weight: 800;
+}
+.loading-meter {
+  height: 7px;
+  margin-top: 24px;
+  overflow: hidden;
+  background: rgba(221, 239, 231, 0.16);
+}
+.loading-meter i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--primary);
+  box-shadow: 0 0 12px var(--primary-glow);
+  transition: width 0.18s ease;
+}
+.loading-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+  color: #d9eee5;
+  font-size: 13px;
+}
+.loading-copy strong { color: var(--gold); }
+.loading-detail {
+  min-height: 20px;
+  margin: 13px 0 0;
+  color: #90ada2;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body.game-running canvas#game-canvas { cursor: none; }
+}
+
 /* 战术全息准星 */
 #hud-crosshair {
   position: fixed;
@@ -98,6 +168,20 @@ canvas#game-canvas {
   border-color: #f5c842;
   box-shadow: 0 0 14px rgba(245, 200, 66, 0.8);
 }
+#hud-crosshair.is-mobile {
+  left: 50% !important;
+  top: 50% !important;
+  width: 56px;
+  height: 56px;
+}
+#hud-crosshair.is-mobile .crosshair-ring {
+  inset: 5px;
+  border-width: 2px;
+}
+#hud-crosshair.is-mobile .crosshair-bracket.top,
+#hud-crosshair.is-mobile .crosshair-bracket.bottom { left: 26px; }
+#hud-crosshair.is-mobile .crosshair-bracket.left,
+#hud-crosshair.is-mobile .crosshair-bracket.right { top: 26px; }
 
 /* ==========================================================================
    PC 桌面端战术 HUD 顶层界面 (两端停靠，中央无任何遮挡)
@@ -116,13 +200,19 @@ canvas#game-canvas {
 }
 
 .top-bar {
+  position: absolute;
+  top: 16px;
+  right: 24px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  width: 100%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .brand-card {
+  position: absolute;
+  top: 16px;
+  left: 24px;
   display: flex;
   gap: 14px;
   align-items: center;
@@ -238,7 +328,7 @@ canvas#game-canvas {
 /* 右上角战术雷达 */
 .radar-box {
   position: absolute;
-  top: 80px;
+  top: 180px;
   right: 24px;
   width: 120px;
   height: 120px;
@@ -386,7 +476,7 @@ canvas#game-canvas {
 #tactical-support-hud {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  top: 320px;
   z-index: 16;
   width: 250px;
   padding: 8px;
@@ -428,17 +518,17 @@ canvas#game-canvas {
 
 #ally-monitor {
   position: fixed;
-  left: 24px;
+  right: 24px;
   bottom: 24px;
   z-index: 16;
   min-width: 190px;
   padding: 8px 10px;
-  border-left: 3px solid #50e3a4;
+  border-right: 3px solid #50e3a4;
   background: rgba(8,18,21,.88);
   font: 11.5px sans-serif;
   color: #dcece5;
   display: none;
-  border-radius: 0 6px 6px 0;
+  border-radius: 6px 0 0 6px;
 }
 #ally-monitor .ally-bar {
   height: 5px;
@@ -1058,28 +1148,50 @@ html.forced-landscape .mobile-top-bar {
 
 <div id="loading-screen" role="status" aria-live="polite">
   <div class="loading-panel">
-    <div class="loading-kicker">白岭防线 · 战区整备</div>
-    <div class="loading-title">正在装填战场资源</div>
+    <div class="loading-kicker">白岭防线</div>
+    <div class="loading-title">战区准备中</div>
     <div class="loading-meter" aria-hidden="true"><i id="loading-bar"></i></div>
     <div class="loading-copy"><span id="loading-status">校验资源</span><strong id="loading-percent">0%</strong></div>
     <p class="loading-detail" id="loading-detail">图像、音频与战场数据准备中</p>
   </div>
 </div>
 <div id="damage-vignette"></div>
-<div id="hud-crosshair"></div>
+<div id="hud-crosshair" aria-hidden="true">
+  <i class="crosshair-ring"></i>
+  <i class="crosshair-dot"></i>
+  <i class="crosshair-bracket top"></i>
+  <i class="crosshair-bracket bottom"></i>
+  <i class="crosshair-bracket left"></i>
+  <i class="crosshair-bracket right"></i>
+</div>
 <div id="hit-marker">✕</div>
 <div id="combat-feed"></div>
 
 <div id="hud">
+  <div class="brand-card">
+    <div class="sigil"><span>★</span></div>
+    <div>
+      <h1>白岭防线</h1>
+      <div class="small">ARMORED FRONT / 3D TANK DIVISION</div>
+    </div>
+  </div>
+
   <div class="top-bar">
-    <div class="brand-card">
-      <div class="sigil"><span>★</span></div>
-      <div>
-        <h1>白岭防线</h1>
-        <div class="small">ARMORED FRONT / 3D TANK DIVISION</div>
+    <div class="stats-board">
+      <div class="stat-item">
+        <span>战区</span>
+        <b id="wave">01 / 06</b>
+      </div>
+      <div class="stat-item">
+        <span>坚守</span>
+        <b id="timer" class="timer">01:00</b>
+      </div>
+      <div class="stat-item">
+        <span>得分</span>
+        <b id="score" class="highlight">0000</b>
       </div>
     </div>
-    
+
     <div class="music-controller" id="music-controller" title="点击播放/暂停《东方红》背景进行曲">
       <span class="music-icon" id="music-icon">🎵</span>
       <span class="music-title">《东方红》序曲</span>
@@ -1096,21 +1208,6 @@ html.forced-landscape .mobile-top-bar {
       <span class="music-icon">⛶</span>
       <span class="music-title">全屏横屏</span>
       <button class="music-btn" id="fs-toggle-btn">锁定</button>
-    </div>
-
-    <div class="stats-board">
-      <div class="stat-item">
-        <span>战区</span>
-        <b id="wave">01 / 06</b>
-      </div>
-      <div class="stat-item">
-        <span>坚守</span>
-        <b id="timer" class="timer">01:00</b>
-      </div>
-      <div class="stat-item">
-        <span>得分</span>
-        <b id="score" class="highlight">0000</b>
-      </div>
     </div>
   </div>
 
@@ -2965,6 +3062,42 @@ const radarCanvas = document.querySelector('#radar-canvas');
 const radarCtx = radarCanvas.getContext('2d');
 const hudCrosshair = document.querySelector('#hud-crosshair');
 
+function usesMobileAim() {
+  return touchControls.isTouchDevice || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+
+function updateAimFromScreenPoint(clientX, clientY) {
+  mouse.x = (clientX / innerWidth) * 2 - 1;
+  mouse.y = -(clientY / innerHeight) * 2 + 1;
+  if (!player.o) return;
+
+  ray.setFromCamera(mouse, camera);
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const hitPoint = new THREE.Vector3();
+  if (ray.ray.intersectPlane(groundPlane, hitPoint)) {
+    reticleMesh.position.x = hitPoint.x;
+    reticleMesh.position.z = hitPoint.z;
+
+    // 强制计算准星方向（从坦克指向地面落点）
+    const dx = hitPoint.x - player.o.position.x;
+    const dz = hitPoint.z - player.o.position.z;
+    player.aimWorldAngle = Math.atan2(-dx, -dz);
+
+    // 强制同步：炮塔立即指向准星方向
+    if (player.turretWorldAngle === undefined) player.turretWorldAngle = player.aimWorldAngle;
+  }
+}
+
+function showCombatCrosshair() {
+  const mobileAim = usesMobileAim();
+  hudCrosshair.classList.toggle('is-mobile', mobileAim);
+  if (!mobileAim) {
+    hudCrosshair.style.left = `${innerWidth / 2}px`;
+    hudCrosshair.style.top = `${innerHeight / 2}px`;
+  }
+  hudCrosshair.style.display = 'flex';
+}
+
 /* ==========================================================================
    6. 旗帜材质与战术准星
    ========================================================================== */
@@ -3541,18 +3674,19 @@ function spawnSupplyCrate(x, z, isAirDrop = false) {
    ========================================================================== */
 function shootSingleBullet(owner, angleOffset = 0, customType = null, enemy = false, isUlt = false) {
   const ammo = customType || (enemy ? 'normal' : player.ammoType);
-  
+
   let angle;
   if (isUlt) {
     angle = angleOffset;
   } else if (owner === player) {
-    angle = player.turretAngle + player.angle + angleOffset;
+    // 强制使用炮塔实际指向的角度，确保弹道跟随炮口
+    angle = (player.actualFireAngle !== undefined ? player.actualFireAngle : player.aimWorldAngle) + angleOffset;
   } else {
     angle = owner.o.rotation.y + owner.turret.rotation.y + angleOffset;
   }
 
   const dir = new THREE.Vector3(-Math.sin(angle), 0, -Math.cos(angle));
-  const muzzlePos = owner.o.position.clone().setY(1.35).addScaledVector(dir, 2.1);
+  const muzzlePos = owner.o.position.clone().add(new THREE.Vector3(0, 1.35, 0)).addScaledVector(dir, 2.1);
 
   if (!isUlt) {
     sfx.playShoot(ammo, enemy);
@@ -3577,7 +3711,7 @@ function shootSingleBullet(owner, angleOffset = 0, customType = null, enemy = fa
   const group = new THREE.Group();
   let bulletColor = enemy ? 0xff4d33 : isUlt ? 0xf5c842 : 0xffcc33;
   let trailColor = enemy ? 0xff4d33 : isUlt ? 0x38d9f5 : 0xffe655;
-  let bulletSpeed = enemy ? 22 : isUlt ? 38 : 28;
+  let bulletSpeed = enemy ? 22 : isUlt ? 38 : 42;
   let bulletDamage = isUlt ? 2.5 : 1;
   if (owner === player && !enemy) bulletDamage *= player.damageMultiplier;
 
@@ -3890,6 +4024,7 @@ function reset() {
   player.turretAngle = 0;
   player.turretTarget = 0;
   player.aimWorldAngle = Math.PI;
+  player.turretWorldAngle = Math.PI;  // 初始化炮塔世界角度
   player.speed = 0;
   player.turnRate = 0;
   player.turret.rotation.y = 0;
@@ -3917,6 +4052,7 @@ function finish(win) {
   historyEl.hidden = true;
   diffBoxEl.hidden = false;
   hudCrosshair.style.display = 'none';
+  document.body.classList.remove('game-running');
 
   if (state.mode === 'endless') {
     saveLeaderboardRecord();
@@ -3954,6 +4090,7 @@ function clearRound() {
   historyEl.hidden = true;
   diffBoxEl.hidden = true;
   hudCrosshair.style.display = 'none';
+  document.body.classList.remove('game-running');
   eyebrowText.textContent = '战区防御突破';
   heading.innerHTML = '战区 ' + String(state.wave).padStart(2, '0') + ' 坚守完成';
   copy.textContent = '阵地坚守成功，敌军装甲攻势被遏制！战地整备车间已开放。';
@@ -3966,7 +4103,8 @@ function begin() {
   if (!assetsReady) return;
   sfx.init();
   historicAudio.playBgm();
-  hudCrosshair.style.display = 'flex';
+  document.body.classList.add('game-running');
+  showCombatCrosshair();
   if (state.endlessUnlocked && !state.awaitNext && state.mode === 'campaign') { startEndless(); return; }
   if (state.awaitNext) {
     state.wave++;
@@ -4089,9 +4227,18 @@ function update(dt) {
   player.o.rotation.y = player.angle;
 
   if (player.aimWorldAngle === undefined) player.aimWorldAngle = player.angle;
-  const desiredTurretRel = Math.atan2(Math.sin(player.aimWorldAngle - player.angle), Math.cos(player.aimWorldAngle - player.angle));
-  player.turretAngle = smoothAngleTo(player.turretAngle, desiredTurretRel, 11, dt);
+  if (player.turretWorldAngle === undefined) player.turretWorldAngle = player.angle;
+
+  // 强制计算最短旋转路径，让炮塔快速跟随准星
+  const angleDelta = Math.atan2(Math.sin(player.aimWorldAngle - player.turretWorldAngle), Math.cos(player.aimWorldAngle - player.turretWorldAngle));
+  player.turretWorldAngle += angleDelta * Math.min(1, dt * 15); // 提高跟随速度
+
+  // 强制计算炮塔相对于车体的旋转角度
+  player.turretAngle = player.turretWorldAngle - player.angle;
   player.turret.rotation.y = player.turretAngle;
+
+  // 强制同步：确保射击时使用炮塔实际指向的角度
+  player.actualFireAngle = player.turretWorldAngle;
 
   const moveVec = new THREE.Vector3(-Math.sin(player.angle), 0, -Math.cos(player.angle)).multiplyScalar(player.speed * dt);
   moveActor(player.o, moveVec, 0.95);
@@ -4117,7 +4264,7 @@ function update(dt) {
   }
 
   if (player.recoilVal > 0) {
-    player.recoilVal = Math.max(0, player.recoilVal - dt * 2.5);
+    player.recoilVal = Math.max(0, player.recoilVal - dt * 0.8);
     player.recoilMesh.position.z = -1.0 + player.recoilVal;
   }
 
@@ -4291,7 +4438,7 @@ function update(dt) {
 
     // 6. 后坐力恢复
     if (e.recoilVal > 0) {
-      e.recoilVal = Math.max(0, e.recoilVal - dt * 2.5);
+      e.recoilVal = Math.max(0, e.recoilVal - dt * 0.8);
       e.recoilMesh.position.z = -1.0 + e.recoilVal;
     }
 
@@ -4717,9 +4864,10 @@ function animate() {
   const desiredCameraYaw = player.angle + touchControls.yawOffset;
   cameraYaw = THREE.MathUtils.lerp(cameraYaw, desiredCameraYaw, 1 - Math.exp(-dt * 6.5));
 
-  const pitchHeight = 5.4 + touchControls.pitchOffset * 4.0;
+  // 适中的相机高度，确保射线投射准确
+  const pitchHeight = 6.0 + touchControls.pitchOffset * 4.0;
   const aim = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
-  const desiredCamPos = target.clone().add(aim.clone().multiplyScalar(-9.5)).add(new THREE.Vector3(0, pitchHeight, 0));
+  const desiredCamPos = target.clone().add(aim.clone().multiplyScalar(-10.0)).add(new THREE.Vector3(0, pitchHeight, 0));
 
   if (cameraShake.trauma > 0) {
     cameraShake.trauma = Math.max(0, cameraShake.trauma - dt * 2.0);
@@ -4730,12 +4878,14 @@ function animate() {
   }
 
   camera.position.lerp(desiredCamPos, 1 - Math.exp(-dt * 4.5));
-  camera.lookAt(target.clone().add(aim.multiplyScalar(3.6)).add(new THREE.Vector3(0, 1.2 + touchControls.pitchOffset * 1.5, 0)));
+  // 调整观察点，平衡俯视角度与瞄准准确性
+  camera.lookAt(target.clone().add(aim.multiplyScalar(3.6)).add(new THREE.Vector3(0, 0.8 + touchControls.pitchOffset * 1.5, 0)));
 
-  // 在移动端或屏幕触控旋转视角时，炮塔自动对准当前视野中心方向
-  if (touchControls.isTouchDevice || touchControls.touchLook.active || touchControls.yawOffset !== 0) {
-    player.aimWorldAngle = player.angle + touchControls.yawOffset;
+  // 移动端始终以屏幕中心的准星作为炮塔和地面落点的瞄准基准。
+  if (usesMobileAim()) {
+    updateAimFromScreenPoint(innerWidth / 2, innerHeight / 2);
   }
+  // PC端通过鼠标移动事件更新准星，不在这里覆盖
 
   performanceAdaptive.update(dt);
   renderer.render(scene, camera);
@@ -4866,18 +5016,7 @@ ultBadgeEl.addEventListener('click', () => {
 addEventListener('mousemove', e => {
   hudCrosshair.style.left = e.clientX + 'px';
   hudCrosshair.style.top = e.clientY + 'px';
-
-  mouse.x = (e.clientX / innerWidth) * 2 - 1;
-  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
-  if (!player.o) return;
-  ray.setFromCamera(mouse, camera);
-  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  const hitPoint = new THREE.Vector3();
-  if (ray.ray.intersectPlane(groundPlane, hitPoint)) {
-    reticleMesh.position.x = hitPoint.x;
-    reticleMesh.position.z = hitPoint.z;
-    player.aimWorldAngle = Math.atan2(-(hitPoint.x - player.o.position.x), -(hitPoint.z - player.o.position.z));
-  }
+  if (!usesMobileAim()) updateAimFromScreenPoint(e.clientX, e.clientY);
 });
 
 function requestLandscapeMode() {
@@ -5004,6 +5143,23 @@ function updateLoadingProgress(completed, failed) {
   loadingDetail.textContent = failed ? `${failed} 项资源不可用，将以兼容模式继续` : '图像、音频与战场数据已写入本地缓存';
 }
 
+async function decodePreloadedImage(blob) {
+  if ('createImageBitmap' in window) {
+    const bitmap = await createImageBitmap(blob);
+    bitmap.close();
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(blob);
+  const image = new Image();
+  try {
+    image.src = objectUrl;
+    await image.decode();
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 async function preloadGameAssets() {
   start.disabled = true;
   start.setAttribute('aria-disabled', 'true');
@@ -5013,7 +5169,8 @@ async function preloadGameAssets() {
     try {
       const response = await fetch(url, { cache: 'force-cache' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      await response.blob();
+      const blob = await response.blob();
+      if (/\.(jpg|jpeg|png|webp)$/i.test(url)) await decodePreloadedImage(blob);
     } catch (error) {
       failed++;
     } finally {
@@ -5021,7 +5178,19 @@ async function preloadGameAssets() {
       updateLoadingProgress(completed, failed);
     }
   }));
+
+  loadingStatus.textContent = '正在预热战场渲染';
+  loadingDetail.textContent = '正在编译地形、战车与特效材质';
+  try {
+    renderer.compile(scene, camera);
+    renderer.render(scene, camera);
+  } catch (error) {
+    // 不支持预编译的设备仍可在首次渲染时按浏览器默认策略编译。
+  }
+
   assetsReady = true;
+  loadingStatus.textContent = '战区整备完成';
+  loadingDetail.textContent = failed ? `${failed} 项资源不可用，将以兼容模式继续` : '全部游戏资源已加载，战场已就绪';
   start.disabled = false;
   start.removeAttribute('aria-disabled');
   window.setTimeout(() => loadingScreen.classList.add('is-complete'), 260);
@@ -5112,9 +5281,10 @@ function updateTankPhysics(dt) {
 
 function fireRailgun() {
   const cfg = WeaponModules.railgun;
-  const angle = player.turretAngle + player.angle;
+  // 强制使用炮塔实际角度
+  const angle = player.actualFireAngle !== undefined ? player.actualFireAngle : player.aimWorldAngle;
   const dir = new THREE.Vector3(-Math.sin(angle), 0, -Math.cos(angle));
-  const muzzle = player.o.position.clone().setY(1.35).addScaledVector(dir, 2.1);
+  const muzzle = player.o.position.clone().add(new THREE.Vector3(0, 1.35, 0)).addScaledVector(dir, 2.1);
   const beamGeom = new THREE.CylinderGeometry(0.07, 0.07, 58, 10); beamGeom.rotateX(Math.PI / 2);
   const beam = new THREE.Mesh(beamGeom, new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
   beam.position.copy(muzzle).addScaledVector(dir, 29);
@@ -5183,9 +5353,9 @@ function explodeBarrel(index) {
   HapticEngine.trigger('fire_heavy');
   pushCombatFeed('💥 柴油油桶殉爆，冲击波横扫战场！');
   const blast = new THREE.Vector3(b.x, 0, b.z);
-  enemies.slice().forEach(e => { if (blast.distanceTo(e.o.position) < 8.5) damageEnemy(e, 28, 'barrel'); });
+  enemies.slice().forEach(e => { if (blast.distanceTo(e.o.position) < 8.5) damageEnemy(e, 14, 'barrel'); });
   if (blast.distanceTo(player.o.position) < 8.5 && player.invulnTimer <= 0) {
-    player.hp = Math.max(0, player.hp - 28);
+    player.hp = Math.max(0, player.hp - 14);
     player.invulnTimer = 0.45;
     state.stats.currentWaveDamaged = true;
     createRealisticImpactFX(player.o.position, true, true);
