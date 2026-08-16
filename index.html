@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>白岭防线 | 3D Tank Battle</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
 <style>
 :root {
   --primary: #50e3a4;
@@ -1099,6 +1100,83 @@ h1 {
   .upgrade-card span { font-size: 10.5px !important; }
   .medal { padding: 6px 8px !important; }
 }
+/* 强制横屏兜底：竖屏锁定也能直接横屏显示，不依赖全屏接口 */
+html.forced-landscape body {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vh !important;
+  height: 100vw !important;
+  overflow: hidden !important;
+  transform: rotate(90deg) translateY(-100%);
+  transform-origin: top left;
+}
+html.forced-landscape #orientation-hint { display: none !important; }
+html.forced-landscape #hud {
+  padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+html.forced-landscape .brand-card { transform: scale(0.74); transform-origin: top left; }
+html.forced-landscape .stats-board { transform: scale(0.74); transform-origin: top right; }
+html.forced-landscape .unit-status { width: min(56vh, 470px) !important; }
+html.forced-landscape .bottom-bar { align-items: flex-end; }
+html.forced-landscape .radar-box { display: none; }
+html.forced-landscape .joystick-zone {
+  width: 108px !important;
+  height: 108px !important;
+  bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+  right: calc(14px + env(safe-area-inset-right)) !important;
+  left: auto !important;
+}
+html.forced-landscape .joystick-knob { width: 44px !important; height: 44px !important; }
+html.forced-landscape .joystick-zone::after { font-size: 10px !important; bottom: -17px !important; }
+html.forced-landscape .mobile-action-cluster {
+  top: calc(10px + env(safe-area-inset-top)) !important;
+  right: calc(12px + env(safe-area-inset-right)) !important;
+  bottom: auto !important;
+  gap: 10px !important;
+}
+html.forced-landscape .mobile-btn.fire { width: 64px !important; height: 64px !important; }
+html.forced-landscape .mobile-btn.fire span { font-size: 20px !important; }
+html.forced-landscape .mobile-btn.sub { width: 42px !important; height: 42px !important; }
+html.forced-landscape .mobile-btn.sub span { font-size: 15px !important; }
+html.forced-landscape .mobile-top-bar {
+  top: calc(8px + env(safe-area-inset-top)) !important;
+  left: calc(10px + env(safe-area-inset-left)) !important;
+  right: auto !important;
+}
+html.forced-landscape .mobile-icon-btn { width: 34px !important; height: 34px !important; font-size: 14px !important; }
+html.forced-landscape #ally-monitor {
+  bottom: calc(58px + env(safe-area-inset-bottom)) !important;
+  left: calc(10px + env(safe-area-inset-left)) !important;
+  top: auto !important;
+  min-width: 176px !important;
+}
+html.forced-landscape #tactical-support-hud {
+  bottom: calc(58px + env(safe-area-inset-bottom)) !important;
+  right: calc(10px + env(safe-area-inset-right)) !important;
+  top: auto !important;
+  width: 196px !important;
+}
+html.forced-landscape .panel {
+  width: min(620px, calc(100vh - 40px)) !important;
+  max-height: calc(100vw - 24px) !important;
+  padding: 18px 22px !important;
+}
+html.forced-landscape .panel-banner { height: 118px !important; }
+html.forced-landscape .history-card { max-height: 64px !important; }
+html.forced-landscape #upgrade-overlay .progression-shell,
+html.forced-landscape #medal-overlay .progression-shell {
+  width: min(680px, calc(100vh - 24px)) !important;
+  max-height: calc(100vw - 20px) !important;
+  overflow-y: auto !important;
+}
+html.forced-landscape .progression-shell { padding: 14px 18px !important; }
+html.forced-landscape .progression-shell h2 { font-size: 18px !important; margin: 0 0 6px !important; }
+html.forced-landscape .upgrade-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+html.forced-landscape .medal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+html.forced-landscape .upgrade-card { min-height: 84px !important; padding: 10px !important; }
+html.forced-landscape .upgrade-card span { font-size: 11px !important; }
+html.forced-landscape .medal { padding: 8px !important; }
 </style>
 </head>
 <body>
@@ -2778,8 +2856,13 @@ function bindLeftJoystick(element, control) {
     const rect = element.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    const dx = event.clientX - cx;
-    const dy = event.clientY - cy;
+    let dx = event.clientX - cx;
+    let dy = event.clientY - cy;
+    if (isForcedLandscape()) {
+      const swap = dx;
+      dx = dy;
+      dy = -swap;
+    }
     const maxRadius = 48;
     const distance = Math.min(maxRadius, Math.hypot(dx, dy));
     const angle = Math.atan2(dy, dx);
@@ -2827,8 +2910,13 @@ function bindScreenTouchLook() {
 
   window.addEventListener('pointermove', event => {
     if (touchControls.touchLook.active && event.pointerId === touchControls.touchLook.pointerId) {
-      const dx = event.clientX - touchControls.touchLook.lastX;
-      const dy = event.clientY - touchControls.touchLook.lastY;
+      let dx = event.clientX - touchControls.touchLook.lastX;
+      let dy = event.clientY - touchControls.touchLook.lastY;
+      if (isForcedLandscape()) {
+        const swap = dx;
+        dx = dy;
+        dy = -swap;
+      }
       touchControls.touchLook.lastX = event.clientX;
       touchControls.touchLook.lastY = event.clientY;
 
@@ -4561,6 +4649,9 @@ addEventListener('mousemove', e => {
 function requestLandscapeMode() {
   const el = document.documentElement;
   const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen || el.mozRequestFullScreen;
+  const applyFallback = () => setTimeout(() => {
+    if (innerWidth < innerHeight) applyForcedLandscape();
+  }, 500);
   if (requestFS) {
     requestFS.call(el).then(() => {
       if (screen.orientation && screen.orientation.lock) {
@@ -4571,8 +4662,12 @@ function requestLandscapeMode() {
         screen.orientation.lock('landscape').catch(() => {});
       }
     });
+    applyFallback();
   } else if (screen.orientation && screen.orientation.lock) {
     screen.orientation.lock('landscape').catch(() => {});
+    applyFallback();
+  } else {
+    applyFallback();
   }
 }
 
@@ -4720,6 +4815,39 @@ async function preloadGameAssets() {
   window.setTimeout(() => loadingScreen.classList.add('is-complete'), 260);
   window.setTimeout(() => loadingScreen.remove(), 600);
 }
+function isForcedLandscape() {
+  return document.documentElement.classList.contains('forced-landscape');
+}
+function applyForcedLandscape() {
+  const touch = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
+  if (!touch || innerWidth >= innerHeight) {
+    releaseForcedLandscape();
+    return;
+  }
+  document.documentElement.classList.add('forced-landscape');
+  renderer.setSize(innerHeight, innerWidth);
+  camera.aspect = innerHeight / innerWidth;
+  camera.updateProjectionMatrix();
+}
+function releaseForcedLandscape() {
+  if (!isForcedLandscape()) return;
+  document.documentElement.classList.remove('forced-landscape');
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', () => {
+  if (innerWidth > innerHeight) releaseForcedLandscape();
+  else if (isForcedLandscape()) applyForcedLandscape();
+});
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    if (innerWidth > innerHeight) releaseForcedLandscape();
+    else if (isForcedLandscape()) applyForcedLandscape();
+  }, 250);
+});
+applyForcedLandscape();
+
 start.onclick = begin;
 preloadGameAssets();
 animate();
