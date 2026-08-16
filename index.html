@@ -3011,10 +3011,10 @@ function bindScreenTouchLook() {
       touchControls.touchLook.lastX = event.clientX;
       touchControls.touchLook.lastY = event.clientY;
 
-      // 水平滑动旋转视角 (Yaw)
-      touchControls.yawOffset -= dx * 0.007;
-      // 垂直滑动微调仰角 (Pitch)
-      touchControls.pitchOffset = THREE.MathUtils.clamp(touchControls.pitchOffset - dy * 0.0035, -0.4, 0.45);
+      // 水平滑动旋转视角 (Yaw) - 提高灵敏度
+      touchControls.yawOffset -= dx * 0.012;
+      // 垂直滑动微调仰角 (Pitch) - 提高灵敏度
+      touchControls.pitchOffset = THREE.MathUtils.clamp(touchControls.pitchOffset - dy * 0.006, -0.4, 0.45);
     }
   }, { passive: false });
 
