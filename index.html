@@ -1324,6 +1324,9 @@ class BattlefieldSoundEngine {
     this.engineOsc1 = null;
     this.engineOsc2 = null;
     this.engineFilter = null;
+    this.trackNoise = null;
+    this.trackNoiseFilter = null;
+    this.trackGain = null;
   }
   init() {
     if (this.ctx) {
@@ -1368,11 +1371,28 @@ class BattlefieldSoundEngine {
       this.engineFilter.connect(this.engineGain);
       this.engineGain.connect(this.ctx.destination);
 
+      const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 2, this.ctx.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < noiseData.length; i++) noiseData[i] = Math.random() * 2 - 1;
+      this.trackNoise = this.ctx.createBufferSource();
+      this.trackNoise.buffer = noiseBuffer;
+      this.trackNoise.loop = true;
+      this.trackNoiseFilter = this.ctx.createBiquadFilter();
+      this.trackNoiseFilter.type = 'bandpass';
+      this.trackNoiseFilter.frequency.value = 900;
+      this.trackNoiseFilter.Q.value = 0.8;
+      this.trackGain = this.ctx.createGain();
+      this.trackGain.gain.value = 0;
+      this.trackNoise.connect(this.trackNoiseFilter);
+      this.trackNoiseFilter.connect(this.trackGain);
+      this.trackGain.connect(this.ctx.destination);
+      this.trackNoise.start();
+
       this.engineOsc1.start();
       this.engineOsc2.start();
     } catch(e) {}
   }
-  setEngineThrottle(speedRatio) {
+  setEngineThrottle(speedRatio, isTurning = false) {
     if (!this.engineOsc1 || !this.engineOsc2 || !this.ctx) return;
     const t = this.ctx.currentTime;
     const f1 = 36 + speedRatio * 22; // 36Hz ~ 58Hz
@@ -1381,6 +1401,25 @@ class BattlefieldSoundEngine {
     this.engineOsc2.frequency.setTargetAtTime(f2, t, 0.12);
     if (this.engineFilter) this.engineFilter.frequency.setTargetAtTime(110 + speedRatio * 70, t, 0.15);
     if (this.engineGain) this.engineGain.gain.setTargetAtTime(0.035 + speedRatio * 0.05, t, 0.12);
+    if (this.trackGain) this.trackGain.gain.setTargetAtTime(Math.abs(speedRatio) * (isTurning ? 0.12 : 0.045), t, 0.08);
+    if (this.trackNoiseFilter) this.trackNoiseFilter.frequency.setTargetAtTime(isTurning ? 1400 : 900, t, 0.1);
+  }
+  playDistantCannon() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(52, t);
+    osc.frequency.exponentialRampToValueAtTime(24, t + 1.8);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.22, t + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 260;
+    osc.connect(lp); lp.connect(gain); gain.connect(this.ctx.destination);
+    osc.start(t); osc.stop(t + 2.5);
   }
   playShoot(ammoType = 'normal', isEnemy = false) {
     if (!this.ctx) return;
@@ -2027,6 +2066,7 @@ function resetBattlefieldScene() {
   tacticalSupport.recon.drone = null;
   tacticalSupport.recon.timer = 0;
   scorchMarks.splice(0).forEach(mark => scene.remove(mark.o));
+  createBarrels();
 
   // 仍存在的掩体恢复耐久与外观；已坍塌对象按原始规格重新生成并注册碰撞体。
   const destroyed = destructibleObjects.filter(obj => !obj.isAlive);
@@ -2593,6 +2633,11 @@ const medals = [
 
 function initializePlayerUpgrades() {
   player.damageMultiplier = 1;
+  player.weapon = 'standard';
+  player.pitch = 0;
+  player.pitchVel = 0;
+  player.prevSpeed = 0;
+  player.autocannonSide = 1;
   player.speedMultiplier = 1;
   player.turnMultiplier = 1;
   player.reloadSpeedMultiplier = 1;
@@ -2605,10 +2650,10 @@ function initializePlayerUpgrades() {
 function ensureProgressionUi() {
   if (document.querySelector('#upgrade-overlay')) return;
   const style = document.createElement('style');
-  style.textContent = '#upgrade-overlay,#medal-overlay{position:fixed;inset:0;z-index:40;display:none;place-items:center;background:rgba(4,10,13,.86);backdrop-filter:blur(8px)}.progression-shell{width:min(900px,calc(100vw - 28px));padding:24px;background:#101a19;border:1px solid rgba(245,200,66,.5);box-shadow:0 28px 80px rgba(0,0,0,.7);text-align:center}.progression-shell h2{font-size:23px;letter-spacing:1px;color:#f5c842;margin:0 0 8px}.progression-shell p{color:#b8cbc3;font:13px/1.5 sans-serif;margin:0 0 18px}.upgrade-grid,.medal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.upgrade-card{min-height:176px;padding:16px;border:1px solid rgba(140,180,165,.28);background:#142320;color:#e7f3ed;text-align:left;cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s}.upgrade-card:hover{transform:translateY(-3px);border-color:#f5c842;box-shadow:0 10px 24px rgba(0,0,0,.35)}.upgrade-card b{display:block;font-size:15px;margin-bottom:10px}.upgrade-card span{display:block;font:12px/1.55 sans-serif;color:#b8cbc3}.upgrade-card.common b{color:#50e3a4}.upgrade-card.rare b{color:#38d9f5}.upgrade-card.epic b{color:#f5c842}.medal{padding:12px;border:1px solid rgba(140,180,165,.2);color:#70817b;font:12px/1.45 sans-serif}.medal.earned{border-color:#f5c842;color:#f5c842;background:rgba(245,200,66,.08)}.progression-button{margin-top:18px;padding:10px 20px;border:1px solid #f5c842;background:#f5c842;color:#111b17;font-weight:800;cursor:pointer}@media(max-width:720px){.upgrade-grid{grid-template-columns:1fr}.medal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.upgrade-card{min-height:120px}}';
+  style.textContent = '#upgrade-overlay,#medal-overlay{position:fixed;inset:0;z-index:40;display:none;place-items:center;background:rgba(4,10,13,.86);backdrop-filter:blur(8px)}.progression-shell{width:min(900px,calc(100vw - 28px));padding:24px;background:#101a19;border:1px solid rgba(245,200,66,.5);box-shadow:0 28px 80px rgba(0,0,0,.7);text-align:center}.progression-shell h2{font-size:23px;letter-spacing:1px;color:#f5c842;margin:0 0 8px}.progression-shell p{color:#b8cbc3;font:13px/1.5 sans-serif;margin:0 0 18px}.upgrade-grid,.medal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.upgrade-card{min-height:176px;padding:16px;border:1px solid rgba(140,180,165,.28);background:#142320;color:#e7f3ed;text-align:left;cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s}.upgrade-card:hover{transform:translateY(-3px);border-color:#f5c842;box-shadow:0 10px 24px rgba(0,0,0,.35)}.upgrade-card b{display:block;font-size:15px;margin-bottom:10px}.upgrade-card span{display:block;font:12px/1.55 sans-serif;color:#b8cbc3}.upgrade-card.common b{color:#50e3a4}.upgrade-card.rare b{color:#38d9f5}.upgrade-card.epic b{color:#f5c842}.medal{padding:12px;border:1px solid rgba(140,180,165,.2);color:#70817b;font:12px/1.45 sans-serif}.medal.earned{border-color:#f5c842;color:#f5c842;background:rgba(245,200,66,.08)}.progression-button{margin-top:18px;padding:10px 20px;border:1px solid #f5c842;background:#f5c842;color:#111b17;font-weight:800;cursor:pointer}.weapon-switch{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0 0 16px}.weapon-choice{min-height:40px;padding:8px 12px;border:1px solid rgba(140,180,165,.3);background:#132621;color:#dcece5;font:700 12px sans-serif;cursor:pointer}.weapon-choice.active{border-color:#f5c842;color:#f5c842;background:#28321f}#leaderboard-wrap{margin-top:14px;padding-top:12px;border-top:1px solid rgba(140,180,165,.22)}#leaderboard-wrap h3{font-size:14px;color:#50e3a4;margin:0 0 8px}#leaderboard-list{display:grid;gap:5px;font:12px sans-serif;color:#b8cbc3;text-align:left}@media(max-width:720px){.upgrade-grid{grid-template-columns:1fr}.medal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.upgrade-card{min-height:120px}}';
   document.head.appendChild(style);
-  const upgrades = document.createElement('section'); upgrades.id = 'upgrade-overlay'; upgrades.innerHTML = '<div class="progression-shell"><h2>战地整备车间</h2><p>选择一项永久战区改装，下一防线立即生效。</p><div class="upgrade-grid" id="upgrade-grid"></div></div>'; document.body.appendChild(upgrades);
-  const medalOverlay = document.createElement('section'); medalOverlay.id = 'medal-overlay'; medalOverlay.innerHTML = '<div class="progression-shell"><h2 id="medal-heading">战役结算</h2><p id="medal-summary"></p><div class="medal-grid" id="medal-grid"></div><button class="progression-button" id="medal-close">返回战区菜单</button></div>'; document.body.appendChild(medalOverlay);
+  const upgrades = document.createElement('section'); upgrades.id = 'upgrade-overlay'; upgrades.innerHTML = '<div class="progression-shell"><h2>战地整备车间</h2><p>选择主炮流派或一项永久战区改装，下一防线立即生效。</p><div class="weapon-switch" id="weapon-switch"></div><div class="upgrade-grid" id="upgrade-grid"></div></div>'; document.body.appendChild(upgrades);
+  const medalOverlay = document.createElement('section'); medalOverlay.id = 'medal-overlay'; medalOverlay.innerHTML = '<div class="progression-shell"><h2 id="medal-heading">战役结算</h2><p id="medal-summary"></p><div class="medal-grid" id="medal-grid"></div><div id="leaderboard-wrap"><h3>无尽防线排行榜</h3><div id="leaderboard-list"></div></div><button class="progression-button" id="medal-close">返回战区菜单</button></div>'; document.body.appendChild(medalOverlay);
   medalOverlay.querySelector('#medal-close').addEventListener('click', () => medalOverlay.style.display = 'none');
 }
 
@@ -2623,6 +2668,23 @@ function showUpgradeChoices() {
   ensureProgressionUi();
   const overlay = document.querySelector('#upgrade-overlay');
   const grid = document.querySelector('#upgrade-grid');
+  const switchBox = document.querySelector('#weapon-switch');
+  if (switchBox) {
+    switchBox.replaceChildren();
+    Object.entries(WeaponModules).forEach(([key, mod]) => {
+      const btn = document.createElement('button');
+      btn.className = 'weapon-choice' + (player.weapon === key ? ' active' : '');
+      btn.textContent = mod.name;
+      btn.addEventListener('click', () => {
+        player.weapon = key;
+        HapticEngine.trigger('button_tap');
+        switchBox.querySelectorAll('.weapon-choice').forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+        pushCombatFeed('主炮流派切换：' + mod.name);
+      });
+      switchBox.appendChild(btn);
+    });
+  }
   grid.replaceChildren();
   getUpgradeChoices().forEach(upgrade => {
     const card = document.createElement('button'); card.className = `upgrade-card ${upgrade.rarity}`;
@@ -2643,13 +2705,14 @@ function showMedalResults(win) {
   document.querySelector('#medal-summary').textContent = `命中率 ${accuracy}% · 击毁 ${state.stats.enemiesDestroyed} · 无伤战区 ${state.stats.flawlessWaves}`;
   const grid = document.querySelector('#medal-grid'); grid.replaceChildren();
   medals.forEach(medal => { const earned = medal.check(state.stats); const item = document.createElement('article'); item.className = `medal${earned ? ' earned' : ''}`; item.innerHTML = `<b>${earned ? '★ ' : '◇ '}${medal.name}</b><br><span>${medal.desc}</span>`; grid.appendChild(item); });
+  renderLeaderboard();
 }
 /* ===========================================================================
    5.4 终局巨型陆地巡洋要塞 · 钢铁利维坦
    =========================================================================== */
 const boss = {
   active: false, defeated: false, o: null, hp: 60, maxHp: 60, phase: 1, speed: 0.38,
-  turrets: [], weakpoints: [], phaseTwoTriggered: false, phaseThreeTriggered: false
+  turrets: [], weakpoints: [], parts: [], stunTimer: 0, trackPenalty: 0, phaseTwoTriggered: false, phaseThreeTriggered: false
 };
 
 function ensureBossHud() {
@@ -2673,19 +2736,27 @@ function createBossTurret(id, x, y, z, radius, barrelLength, damage, reload) {
 
 function spawnBoss() {
   if (boss.active || boss.defeated) return;
-  boss.active = true; boss.hp = boss.maxHp; boss.phase = 1; boss.speed = 0.38; boss.phaseTwoTriggered = false; boss.phaseThreeTriggered = false; boss.turrets = []; boss.weakpoints = [];
+  boss.active = true; boss.hp = boss.maxHp; boss.phase = 1; boss.speed = 0.38; boss.phaseTwoTriggered = false; boss.phaseThreeTriggered = false; boss.turrets = []; boss.weakpoints = []; boss.parts = []; boss.stunTimer = 0; boss.trackPenalty = 0;
   const group = new THREE.Group(); group.position.set(0, 0.1, -24); boss.o = group;
   const hullMat = new THREE.MeshStandardMaterial({ color: 0x262d31, roughness: 0.52, metalness: 0.84 });
-  mesh(new THREE.BoxGeometry(8.8, 1.5, 13.2), hullMat, 0, 1.05, 0, group);
+  const coreHull = mesh(new THREE.BoxGeometry(8.8, 1.5, 13.2), hullMat, 0, 1.05, 0, group);
   mesh(new THREE.BoxGeometry(7.9, 0.7, 10.8), darkSteelMat, 0, 2.1, 0.4, group);
   mesh(new THREE.BoxGeometry(9.3, 0.48, 13.8), ironMat, 0, 0.35, 0, group);
   [-4.65, 4.65].forEach(side => {
-    mesh(new THREE.BoxGeometry(0.7, 1.25, 13.8), darkSteelMat, side, 0.72, 0, group);
+    const track = mesh(new THREE.BoxGeometry(0.7, 1.25, 13.8), darkSteelMat, side, 0.72, 0, group);
+    boss.parts.push({ id: side < 0 ? 'leftTrack' : 'rightTrack', hp: 12, maxHp: 12, mesh: track, r: 1.35, destroyed: false });
     for (let z = -5.3; z <= 5.3; z += 1.35) { const wheel = mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.42, 12), ironMat, side, 0.55, z, group); wheel.rotation.z = Math.PI / 2; }
   });
+  const missilePod = mesh(new THREE.BoxGeometry(4.4, 1.4, 2.2), darkSteelMat, 0, 3.0, -4.4, group);
+  boss.parts.push({ id: 'missilePod', hp: 18, maxHp: 18, mesh: missilePod, r: 1.9, destroyed: false });
+  const bridge = mesh(new THREE.BoxGeometry(2.6, 1.2, 2.0), ironMat, 0, 2.85, 5.2, group);
+  boss.parts.push({ id: 'bridge', hp: 10, maxHp: 10, mesh: bridge, r: 1.35, destroyed: false });
+  boss.parts.push({ id: 'hull', hp: 60, maxHp: 60, mesh: coreHull, r: 3.2, destroyed: false });
   boss.turrets.push(createBossTurret('main_heavy', 0, 3.1, -0.7, 1.65, 5.6, 3, 2.4));
   boss.turrets.push(createBossTurret('sub_left', -3.05, 2.25, -3.2, 0.9, 3.3, 1, 1.05));
   boss.turrets.push(createBossTurret('sub_right', 3.05, 2.25, -3.2, 0.9, 3.3, 1, 1.05));
+  const subLeft = boss.turrets.find(turret => turret.id === 'sub_left'); if (subLeft) boss.parts.push({ id: 'sub_left', hp: 15, maxHp: 15, mesh: subLeft.group, r: 1.25, destroyed: false, turret: subLeft });
+  const subRight = boss.turrets.find(turret => turret.id === 'sub_right'); if (subRight) boss.parts.push({ id: 'sub_right', hp: 15, maxHp: 15, mesh: subRight.group, r: 1.25, destroyed: false, turret: subRight });
   const engine = new THREE.Mesh(new THREE.SphereGeometry(1.25, 14, 10), new THREE.MeshStandardMaterial({ color: 0xff6d39, emissive: 0x4d1208, emissiveIntensity: 1.8 }));
   engine.position.set(0, 2.05, 6.25); group.add(engine);
   boss.weakpoints.push({ id: 'rear_engine', mesh: engine, r: 1.55, destroyed: false });
@@ -2716,21 +2787,25 @@ function fireBossTurret(turret, angleOffset = 0) {
 
 function updateBoss(dt) {
   if (!boss.active || !boss.o) return;
+  boss.stunTimer = Math.max(0, boss.stunTimer - dt);
   const toPlayer = player.o.position.clone().sub(boss.o.position); toPlayer.y = 0;
   const distance = toPlayer.length(); const targetAngle = Math.atan2(-toPlayer.x, -toPlayer.z);
-  if (distance > 15) {
+  const moveSpeed = boss.speed * (boss.trackPenalty >= 2 ? 0 : boss.trackPenalty === 1 ? 0.5 : 1);
+  if (boss.stunTimer <= 0 && distance > 15 && moveSpeed > 0) {
     boss.o.rotation.y = turnTo(boss.o.rotation.y, targetAngle, dt * 0.6);
-    moveActor(boss.o, new THREE.Vector3(-Math.sin(boss.o.rotation.y), 0, -Math.cos(boss.o.rotation.y)).multiplyScalar(boss.speed * dt), 3.3);
+    moveActor(boss.o, new THREE.Vector3(-Math.sin(boss.o.rotation.y), 0, -Math.cos(boss.o.rotation.y)).multiplyScalar(moveSpeed * dt), 3.3);
     recordTreadMarks(boss.o, boss.o.rotation.y, true);
   }
+  const bridgeBroken = boss.parts.some(part => part.id === 'bridge' && part.destroyed);
   boss.turrets.forEach((turret, index) => {
+    if (turret.disabled) { turret.recoil.position.z = smoothTo(turret.recoil.position.z, 0, 10, dt); return; }
     const spread = index === 1 ? -0.075 : index === 2 ? 0.075 : 0;
-    const aim = targetAngle + spread;
+    const aim = targetAngle + spread + (bridgeBroken ? (Math.random() - 0.5) * 0.12 : 0);
     turret.worldAngle = turnTo(turret.worldAngle, aim, dt * (index === 0 ? 1.5 : 2.7));
     turret.group.rotation.y = Math.atan2(Math.sin(turret.worldAngle - boss.o.rotation.y), Math.cos(turret.worldAngle - boss.o.rotation.y));
     turret.reload -= dt;
     const error = Math.abs(Math.atan2(Math.sin(aim - turret.worldAngle), Math.cos(aim - turret.worldAngle)));
-    if (turret.reload <= 0 && error < 0.17 && !isPlayerObscured()) {
+    if (turret.reload <= 0 && error < 0.17 && !isPlayerObscured() && boss.stunTimer <= 0) {
       fireBossTurret(turret, spread); turret.reload = turret.maxReload;
     }
     turret.recoil.position.z = smoothTo(turret.recoil.position.z, 0, 10, dt);
@@ -2740,19 +2815,58 @@ function updateBoss(dt) {
 
 function damageBoss(shell) {
   if (!boss.active || !boss.o) return false;
-  const distance = shell.o.position.distanceTo(boss.o.position);
-  if (distance > 6.8) return false;
-  let multiplier = tacticalSupport.recon.timer > 0 ? tacticalSupport.recon.multiplier : 1;
-  boss.weakpoints.forEach(point => { const pos = new THREE.Vector3(); point.mesh.getWorldPosition(pos); if (!point.destroyed && shell.o.position.distanceTo(pos) < point.r) { multiplier *= 2.5; point.destroyed = true; point.mesh.material.color.setHex(0x202426); pushCombatFeed('命中要塞发动机弱点，造成致命穿透！'); } });
-  boss.hp -= (shell.damage || 1) * multiplier;
+  if (shell.o.position.distanceTo(boss.o.position) > 6.8) return false;
+  const multiplier = tacticalSupport.recon.timer > 0 ? tacticalSupport.recon.multiplier : 1;
+  let part = null;
+  boss.parts.forEach(candidate => {
+    if (candidate.destroyed) return;
+    const pos = new THREE.Vector3(); candidate.mesh.getWorldPosition(pos);
+    if (shell.o.position.distanceTo(pos) < candidate.r + 0.25) part = candidate;
+  });
+  if (part && part.id !== 'hull') {
+    part.hp -= (shell.damage || 1) * multiplier;
+    state.stats.shotsHit++;
+    createRealisticImpactFX(shell.o.position, true);
+    HapticEngine.trigger('hit_damage');
+    if (part.hp <= 0) destroyBossPart(part);
+    updateBossHud(); return true;
+  }
+  let coreMult = multiplier;
+  boss.weakpoints.forEach(point => { const pos = new THREE.Vector3(); point.mesh.getWorldPosition(pos); if (!point.destroyed && shell.o.position.distanceTo(pos) < point.r) { coreMult *= 2.5; point.destroyed = true; point.mesh.material.color.setHex(0x202426); pushCombatFeed('命中要塞发动机弱点，造成致命穿透！'); } });
+  boss.hp -= (shell.damage || 1) * coreMult;
   createRealisticImpactFX(shell.o.position, true); state.stats.shotsHit++;
   if (boss.hp <= 0) {
-    boss.active = false; boss.defeated = true; state.stats.gameWon = true;
+    boss.active = false; boss.defeated = true; state.stats.gameWon = true; state.endlessUnlocked = true;
     for (let i = 0; i < 5; i++) setTimeout(() => createTankDestruction(boss.o.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 8)), true), i * 180);
-    scene.remove(boss.o); pushCombatFeed('钢铁利维坦已被摧毁，最终防线守住了！');
+    scene.remove(boss.o); pushCombatFeed('钢铁利维坦已被摧毁，最终防线守住了！【无尽防线】现已解锁！');
     setTimeout(() => finish(true), 1050);
   }
   updateBossHud(); return true;
+}
+
+function destroyBossPart(part) {
+  if (!part || part.destroyed) return;
+  part.destroyed = true;
+  const pos = new THREE.Vector3(); part.mesh.getWorldPosition(pos);
+  scene.remove(part.mesh);
+  createRealisticImpactFX(pos, true);
+  spawnDebrisCluster(pos, 'bunker', 14);
+  sfx.playExplosion(true);
+  HapticEngine.trigger('crit_strike');
+  if (part.id === 'leftTrack' || part.id === 'rightTrack') {
+    boss.trackPenalty++;
+    pushCombatFeed(boss.trackPenalty >= 2 ? '双侧履带全断，钢铁利维坦完全瘫痪！' : '利维坦一侧主履带被击断，机动大幅下降！');
+  } else if (part.id === 'missilePod') {
+    boss.hp = Math.max(0, boss.hp - 10);
+    pushCombatFeed('火箭巢殉爆，利维坦总装甲再损失 10 点！');
+  } else if (part.id === 'bridge') {
+    boss.stunTimer = 4;
+    pushCombatFeed('指挥塔被毁，利维坦进入 4 秒过载硬直！');
+  } else if (part.turret) {
+    part.turret.disabled = true;
+    pushCombatFeed('副炮塔被击毁，利维坦失去一侧持续火力！');
+  }
+  updateBossHud();
 }
 
 function updateBossHud() {
@@ -3505,7 +3619,19 @@ function spawnSupplyCrate(x, z, isAirDrop = false) {
   else if (chosenType === 'shield') { color = 0x3b82f6; label = '加固防弹护盾'; }
 
   const group = new THREE.Group();
-  group.position.set(x, 0.7, z);
+  group.position.set(x, isAirDrop ? 35 : 0.7, z);
+  let chute = null;
+  if (isAirDrop) {
+    chute = new THREE.Mesh(new THREE.ConeGeometry(2.2, 3.2, 8), new THREE.MeshBasicMaterial({ color: 0x5b7152, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }));
+    chute.position.y = 5;
+    group.add(chute);
+    for (let lineIndex = 0; lineIndex < 3; lineIndex++) {
+      const line = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 4.2, 4), new THREE.MeshBasicMaterial({ color: 0x9aa28e }));
+      line.position.y = 3;
+      line.rotation.z = (lineIndex - 1) * 0.35;
+      group.add(line);
+    }
+  }
 
   const crateMat = new THREE.MeshStandardMaterial({ color: 0x3b4447, roughness: 0.7, metalness: 0.4 });
   mesh(new THREE.BoxGeometry(0.7, 0.5, 0.5), crateMat, 0, 0, 0, group);
@@ -3521,7 +3647,10 @@ function spawnSupplyCrate(x, z, isAirDrop = false) {
     label,
     color,
     t: 22,
-    phase: Math.random() * 6
+    phase: Math.random() * 6,
+    falling: isAirDrop,
+    vy: 6,
+    chute
   });
 
   pushCombatFeed(isAirDrop ? `【战区空投】战备物资箱【${label}】已空投降落！` : `战地补给发现: 【${label}】已掉落！`);
@@ -3548,10 +3677,16 @@ function shootSingleBullet(owner, angleOffset = 0, customType = null, enemy = fa
   if (!isUlt) {
     sfx.playShoot(ammo, enemy);
     createMuzzleFlash(muzzlePos, dir, ammo === 'apfsds');
+    if (!enemy) HapticEngine.trigger(ammo === 'mortar' || ammo === 'he' ? 'fire_heavy' : 'fire_light');
   }
 
   if (owner.recoilMesh && !isUlt) {
     owner.recoilVal = 0.38;
+  }
+
+  if (owner === player && !isUlt) {
+    const weaponCfg = WeaponModules[player.weapon] || WeaponModules.standard;
+    player.pitchVel -= weaponCfg.recoil * (ammo === 'mortar' ? 1.15 : 1);
   }
 
   if (owner === player && !isUlt) {
@@ -3571,11 +3706,21 @@ function shootSingleBullet(owner, angleOffset = 0, customType = null, enemy = fa
       bulletColor = 0x38d9f5;
       trailColor = 0x38d9f5;
       bulletSpeed = 42;
-      bulletDamage = 2;
+      bulletDamage = 2 * player.damageMultiplier;
     } else if (ammo === 'he') {
       bulletColor = 0xff6622;
       trailColor = 0xff8833;
-      bulletDamage = 2;
+      bulletDamage = 2 * player.damageMultiplier;
+    } else if (ammo === 'autocannon') {
+      bulletColor = 0xffa52e;
+      trailColor = 0xffd45a;
+      bulletSpeed = 64;
+      bulletDamage = 3.5 * player.damageMultiplier;
+    } else if (ammo === 'mortar') {
+      bulletColor = 0xff5a2a;
+      trailColor = 0xff8a45;
+      bulletSpeed = 26;
+      bulletDamage = 48 * player.damageMultiplier;
     }
   }
 
@@ -3599,6 +3744,7 @@ function shootSingleBullet(owner, angleOffset = 0, customType = null, enemy = fa
     muzzlePos.clone().addScaledVector(dir, -1.4)
   ]);
   const trailMat = new THREE.LineBasicMaterial({ color: trailColor, transparent: true, opacity: 0.9, linewidth: 2 });
+  trailMat.blending = THREE.AdditiveBlending;
   const trail = new THREE.Line(trailGeom, trailMat);
   trail.frustumCulled = false;
   scene.add(trail);
@@ -3611,7 +3757,7 @@ function shootSingleBullet(owner, angleOffset = 0, customType = null, enemy = fa
   group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), dir);
   scene.add(group);
 
-  shells.push({
+  const shell = {
     o: group,
     trail,
     light,
@@ -3621,11 +3767,35 @@ function shootSingleBullet(owner, angleOffset = 0, customType = null, enemy = fa
     damage: bulletDamage,
     isUlt,
     t: 2.4
-  });
+  };
+  if (ammo === 'mortar') {
+    shell.vy = 9;
+    shell.gravity = -16;
+    shell.t = 5;
+  }
+  shells.push(shell);
 }
 
 function shoot(owner, enemy = false) {
   if (owner === player && !enemy) {
+    const weapon = player.weapon || 'standard';
+    if (weapon === 'autocannon') {
+      player.autocannonSide *= -1;
+      shootSingleBullet(owner, player.autocannonSide * 0.045, 'autocannon', false);
+      shootSingleBullet(owner, -player.autocannonSide * 0.045, 'autocannon', false);
+      state.stats.shotsFired += 2;
+      return;
+    }
+    if (weapon === 'mortar') {
+      shootSingleBullet(owner, 0, 'mortar', false);
+      state.stats.shotsFired++;
+      return;
+    }
+    if (weapon === 'railgun') {
+      fireRailgun();
+      state.stats.shotsFired++;
+      return;
+    }
     state.stats.shotsFired += player.ammoType === 'triple' && player.ammoCount > 0 ? 3 : 1;
   }
   if (!enemy && player.ammoType === 'triple' && player.ammoCount > 0) {
@@ -3643,7 +3813,7 @@ function shoot(owner, enemy = false) {
       player.ammoCount--;
       if (player.ammoCount <= 0) {
         player.ammoType = 'normal';
-        pushCombatFeed(`特殊弹药耗尽，切回标准穿甲弹`);
+        pushCombatFeed('特殊弹药耗尽，切回标准穿甲弹');
       }
     }
   }
@@ -3657,6 +3827,7 @@ function triggerUltimate() {
   player.energy = 0;
   state.stats.currentUltKills = 0;
   sfx.playUltimate();
+  HapticEngine.trigger('ultimate_boom');
 
   const bulletCount = 20;
   for (let i = 0; i < bulletCount; i++) {
@@ -3767,6 +3938,7 @@ function spawnEnemy(kindOverride = null) {
   e.preferred = kind === 'artillery' ? 14 : kind === 'heavy' ? 6 : 5;
 
   enemies.push(e);
+  return e;
 }
 
 function showHitFeedback() {
@@ -3840,6 +4012,13 @@ function reset() {
   player.turret.rotation.y = 0;
   player.reload = 0;
   player.special = 0;
+  player.weapon = 'standard';
+  player.pitch = 0;
+  player.pitchVel = 0;
+  player.prevSpeed = 0;
+  player.autocannonSide = 1;
+  state.mode = 'campaign';
+  state.endlessUnlocked = false;
   historyEl.hidden = false;
   diffBoxEl.hidden = false;
 }
@@ -3856,16 +4035,27 @@ function finish(win) {
   diffBoxEl.hidden = false;
   hudCrosshair.style.display = 'none';
 
-  if (win) {
+  if (state.mode === 'endless') {
+    saveLeaderboardRecord();
+    renderLeaderboard();
+    eyebrowText.textContent = '无尽防线 · 战报归档';
+    heading.innerHTML = '<span style="color:#f5c842">坚守纪录</span> · <span style="color:#50e3a4">第 ' + state.wave + ' 波</span>';
+    copy.textContent = '得分 ' + state.score + ' · 击毁 ' + state.stats.enemiesDestroyed + ' · 命中率 ' + (state.stats.shotsFired ? Math.round(state.stats.shotsHit / state.stats.shotsFired * 100) : 0) + '%';
+    start.textContent = '再次挑战无尽防线';
+    state.mode = 'campaign';
+    state.endlessUnlocked = false;
+  } else if (win) {
     eyebrowText.textContent = '纪念中国人民抗日战争暨世界反法西斯战争胜利 81 周年';
     heading.innerHTML = '<span style="color:#f5c842">阵地全胜</span> · <span style="color:#50e3a4">战役大捷</span>';
     copy.textContent = '六个战区坚守完成！全歼进犯敌军装甲部队。铭记历史，缅怀先烈，珍爱和平！';
-    start.textContent = '再次行动';
+    start.textContent = state.endlessUnlocked ? '进入无尽防线' : '再次行动';
   } else {
     eyebrowText.textContent = '战车主装甲被击穿 · 战损重整';
     heading.innerHTML = '<span style="color:#ff4d4f">革命尚未成功</span><br><span style="color:#f5c842">同志仍需努力</span>';
     copy.textContent = '装甲虽损，战斗意志不可磨灭！重整装甲战车，誓死捍卫白岭防线！';
     start.textContent = '重新整备进入战区';
+    state.mode = 'campaign';
+    state.endlessUnlocked = false;
   }
   overlay.style.display = 'grid';
   showMedalResults(win);
@@ -3894,6 +4084,7 @@ function begin() {
   sfx.init();
   historicAudio.playBgm();
   hudCrosshair.style.display = 'flex';
+  if (state.endlessUnlocked && !state.awaitNext && state.mode === 'campaign') { startEndless(); return; }
   if (state.awaitNext) {
     state.wave++;
     state.time = state.wave === 6 ? 110 : 60;
@@ -3935,26 +4126,28 @@ function smoothTo(current, target, response, dt) {
 function update(dt) {
   state.time = Math.max(0, state.time - dt);
   if (state.time <= 0) {
+    if (state.mode === 'endless') { advanceEndlessRound(); return; }
     if (state.wave >= 6) finish(boss.defeated);
     else clearRound();
     return;
   }
 
+  updateUltimateSystems(dt);
+
   // 首批快速刷怪
   if (state.pending) {
     state.between -= dt;
     if (state.between <= 0) {
-      if (state.wave > 6) {
-        finish(true);
-        return;
-      }
-      if (state.wave === 6) {
+      if (state.mode === 'endless') {
+        const endlessCount = 6 + Math.floor(state.wave * 1.8);
+        spawnEndlessWave(endlessCount, 1 + (state.wave - 6) * 0.15, Math.min(1.5, 1 + (state.wave - 6) * 0.04));
+      } else if (state.wave === 6) {
         spawnBoss();
       } else {
         const initialCount = state.wave <= 2 ? 3 : 4;
         for (let i = 0; i < initialCount; i++) spawnEnemy();
       }
-      state.mission = state.wave === 1 ? '侦察推进' : state.wave === 2 ? '壕沟争夺' : state.wave === 3 ? '重装突击' : state.wave === 4 ? '炮兵压制' : state.wave === 5 ? '雪夜反攻' : '最后防线';
+      state.mission = state.mode === 'endless' ? '无尽防线' : state.wave === 1 ? '侦察推进' : state.wave === 2 ? '壕沟争夺' : state.wave === 3 ? '重装突击' : state.wave === 4 ? '炮兵压制' : state.wave === 5 ? '雪夜反攻' : '最后防线';
       missionTagEl.textContent = state.mission;
       pushCombatFeed(`战区 ${state.wave}: 敌方装甲集群发起猛攻！`);
       state.pending = false;
@@ -4020,7 +4213,7 @@ function update(dt) {
         w.rotation.x += wheelSpeed * 0.68 * dt;
       });
     }
-    sfx.setEngineThrottle(Math.min(1, Math.abs(player.speed) / 7.4 + Math.abs(player.turnRate) / 2.35 * 0.25));
+    sfx.setEngineThrottle(Math.min(1, Math.abs(player.speed) / 7.4 + Math.abs(player.turnRate) / 2.35 * 0.25), Math.abs(player.turnRate) > 0.18);
   } else {
     sfx.setEngineThrottle(0.1);
   }
@@ -4040,9 +4233,10 @@ function update(dt) {
   drawReticleTexture(reloadRatio);
   reticleTexture.needsUpdate = true;
 
+  const weaponCfg = WeaponModules[player.weapon] || WeaponModules.standard;
   if ((key.Space || key.Mouse) && player.reload <= 0) {
     shoot(player);
-    player.reload = 0.34 / player.reloadSpeedMultiplier;
+    player.reload = weaponCfg.fireInterval / player.reloadSpeedMultiplier;
   }
 
   // 战地损管脱战自愈与受击无敌帧倒计时
@@ -4205,6 +4399,23 @@ function update(dt) {
   for (let i = pickups.length - 1; i >= 0; i--) {
     const p = pickups[i];
     p.t -= dt;
+    if (p.falling) {
+      p.o.position.y -= Math.min(6, p.vy || 6) * dt;
+      p.o.rotation.y += dt * 0.9;
+      p.sway = (p.sway || 0) + dt;
+      if (p.chute) {
+        p.chute.rotation.z = Math.sin(p.sway * 2.2) * 0.08;
+        p.chute.rotation.x += dt * 0.35;
+      }
+      if (p.o.position.y <= 0.7) {
+        p.falling = false;
+        p.o.position.y = 0.7;
+        if (p.chute) { scene.remove(p.chute); p.chute = null; }
+        spawnRedSmoke(p.o.position.x, p.o.position.z);
+        pushCombatFeed('🪂 空投箱安全着陆，升起红色信号烟！');
+      }
+      continue;
+    }
     p.o.rotation.y += dt * 2.2;
     p.o.position.y = 0.7 + Math.sin(performance.now() * 0.004 + p.phase) * 0.15;
     if (p.o.position.distanceTo(player.o.position) < 2.2) {
@@ -4243,6 +4454,10 @@ function update(dt) {
   for (let i = shells.length - 1; i >= 0; i--) {
     const s = shells[i];
     s.o.position.addScaledVector(s.v, dt);
+    if (s.vy !== undefined) {
+      s.vy += (s.gravity || 0) * dt;
+      s.o.position.y += s.vy * dt;
+    }
 
     const pa = s.trail.geometry.attributes.position.array;
     for (let k = 9; k >= 3; k -= 3) {
@@ -4261,9 +4476,15 @@ function update(dt) {
     const outOfBounds = Math.abs(s.o.position.x) > 27.5 || Math.abs(s.o.position.z) > 27.5;
     let erase = s.t <= 0 || outOfBounds || Boolean(impactCollider);
 
+    if (!erase && s.ammoType === 'mortar' && s.o.position.y <= 0.12) {
+      erase = true;
+      explodeMortarRound(s.o.position.x, s.o.position.z, s.damage);
+    }
+
     if (impactCollider && impactCollider.isDestructible) {
       damageDestructible(impactCollider.destructible, s);
     }
+    if (hitBarrel(s)) erase = true;
     if (erase && s.t > 0) {
       createRealisticImpactFX(s.o.position, false);
     }
@@ -4318,6 +4539,7 @@ function update(dt) {
             }
 
             createRealisticImpactFX(player.o.position, true, true);
+            HapticEngine.trigger('hit_damage');
             damageVignette.style.boxShadow = 'inset 0 0 100px rgba(255, 40, 40, 0.85)';
             setTimeout(() => damageVignette.style.boxShadow = 'inset 0 0 100px rgba(255, 40, 40, 0)', 180);
           }
@@ -4335,12 +4557,18 @@ function update(dt) {
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j];
         if (s.o.position.distanceTo(e.o.position) < 1.55) {
-          const dmg = (s.damage || 1) * (tacticalSupport.recon.timer > 0 ? tacticalSupport.recon.multiplier : 1);
+          const enemyForward = new THREE.Vector3(-Math.sin(e.o.rotation.y), 0, -Math.cos(e.o.rotation.y));
+          const hitDot = enemyForward.dot(s.v.clone().normalize());
+          const hitMult = hitDot > 0.72 ? 2.0 : hitDot < 0.35 ? 1.35 : 1;
+          const isCrit = hitDot > 0.72;
+          const dmg = (s.damage || 1) * (tacticalSupport.recon.timer > 0 ? tacticalSupport.recon.multiplier : 1) * hitMult;
           e.hp -= dmg;
           state.stats.shotsHit++;
           player.energy = Math.min(player.maxEnergy, player.energy + 12 * player.energyGainMultiplier);
           showHitFeedback();
           createRealisticImpactFX(e.o.position, true);
+          if (isCrit) { HapticEngine.trigger('crit_strike'); pushCombatFeed('★ 尾部装甲暴击 ' + Math.round(dmg) + ' 点！'); }
+          else HapticEngine.trigger('hit_damage');
           erase = true;
 
           if (e.hp <= 0) {
@@ -4815,6 +5043,222 @@ async function preloadGameAssets() {
   window.setTimeout(() => loadingScreen.classList.add('is-complete'), 260);
   window.setTimeout(() => loadingScreen.remove(), 600);
 }
+/* ==========================================================================
+   18. 终极版六大模块：物理打击感 / 动态战场 / 武器流派 / 多部位BOSS / 动态音景 / 无尽防线
+   ========================================================================== */
+player.weapon = player.weapon || 'standard';
+player.pitch = 0;
+player.pitchVel = 0;
+player.prevSpeed = 0;
+player.autocannonSide = 1;
+state.mode = state.mode || 'campaign';
+state.endlessUnlocked = false;
+state.distantCannonTimer = 6;
+
+function updateTankPhysics(dt) {
+  const speedDelta = player.speed - player.prevSpeed;
+  player.prevSpeed = player.speed;
+  const spring = -26 * player.pitch - 5.2 * player.pitchVel + THREE.MathUtils.clamp(speedDelta * -0.9, -0.5, 0.5);
+  player.pitchVel += spring * dt;
+  player.pitch += player.pitchVel * dt;
+  const bump = Math.abs(player.speed) > 0.5 ? Math.sin(clock.getElapsedTime() * 21) * Math.min(0.012, Math.abs(player.speed) * 0.002) : 0;
+  if (player.o) player.o.rotation.x = player.pitch + bump;
+}
+
+function fireRailgun() {
+  const cfg = WeaponModules.railgun;
+  const angle = player.turretAngle + player.angle;
+  const dir = new THREE.Vector3(-Math.sin(angle), 0, -Math.cos(angle));
+  const muzzle = player.o.position.clone().setY(1.35).addScaledVector(dir, 2.1);
+  const beamGeom = new THREE.CylinderGeometry(0.07, 0.07, 58, 10); beamGeom.rotateX(Math.PI / 2);
+  const beam = new THREE.Mesh(beamGeom, new THREE.MeshBasicMaterial({ color: 0x7df9ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+  beam.position.copy(muzzle).addScaledVector(dir, 29);
+  beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+  scene.add(beam); fires.push({ o: beam, t: 0.14 });
+  const flash = new THREE.PointLight(0x7df9ff, 14, 34); flash.position.copy(muzzle); scene.add(flash); fires.push({ o: flash, t: 0.12 });
+  createMuzzleFlash(muzzle, dir, false);
+  sfx.playShoot('apfsds', false);
+  player.pitchVel -= cfg.recoil * 1.15;
+  HapticEngine.trigger('fire_heavy');
+  const ray = new THREE.Ray(muzzle, dir);
+  for (let j = enemies.length - 1; j >= 0; j--) {
+    const e = enemies[j];
+    const target = e.o.position.clone().setY(1.2);
+    const hit = ray.closestPointToPoint(target, new THREE.Vector3());
+    if (hit.distanceTo(target) < 1.9 && ray.distanceToPoint(target) < 62) {
+      const dmg = cfg.damage * (tacticalSupport.recon.timer > 0 ? tacticalSupport.recon.multiplier : 1);
+      e.stunTimer = 2;
+      state.stats.shotsHit++;
+      pushCombatFeed(`⚡ 电磁轨道贯穿 ${Math.round(dmg)} 点，敌车瘫痪 2 秒！`);
+      damageEnemy(e, dmg, 'player');
+    }
+  }
+}
+
+function explodeMortarRound(x, z, damage) {
+  const pos = new THREE.Vector3(x, 0.15, z);
+  addScorchDecal(x, z, 3.4);
+  createRealisticImpactFX(pos, false);
+  sfx.playExplosion(true);
+  HapticEngine.trigger('fire_heavy');
+  const blast = new THREE.Vector3(x, 0, z);
+  enemies.slice().forEach(e => { if (blast.distanceTo(e.o.position) < 7) damageEnemy(e, damage, 'player'); });
+  destructibleObjects.filter(o => o.isAlive).forEach(o => { if (Math.hypot(o.x - x, o.z - z) < 4.5) damageDestructible(o, { ammoType: 'he', damage, o: { position: pos } }); });
+  for (let i = 0; i < 12; i++) {
+    const d = mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.1, 0.08 + Math.random() * 0.1, 0.2), new THREE.MeshBasicMaterial({ color: 0xffb04a, transparent: true, opacity: 0.85 }), x, 0.7, z);
+    const a = Math.random() * Math.PI * 2;
+    debrisList.push({ o: d, v: new THREE.Vector3(Math.cos(a) * (2 + Math.random() * 5), 2 + Math.random() * 5, Math.sin(a) * (2 + Math.random() * 5)), rot: new THREE.Vector3(4, 4, 4), t: 0.8 });
+  }
+}
+
+const barrelSpots = [[-8, -4], [8, -3], [-7, 5], [6, 6], [-12, 8], [12, -8], [0, -10]];
+const barrels = [];
+function createBarrels() {
+  barrels.forEach(b => { if (b.o) scene.remove(b.o); });
+  barrels.length = 0;
+  barrelSpots.forEach(([x, z]) => {
+    const g = new THREE.Group(); g.position.set(x, 0.75, z);
+    mesh(new THREE.CylinderGeometry(0.72, 0.72, 1.45, 16), new THREE.MeshStandardMaterial({ color: 0xa3251f, roughness: 0.5, metalness: 0.25 }), 0, 0, 0, g);
+    mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0xf5c842, roughness: 0.4, metalness: 0.7 }), 0, 0.72, 0, g);
+    const hazard = mesh(new THREE.TorusGeometry(0.55, 0.08, 8, 24), new THREE.MeshBasicMaterial({ color: 0xffd84d }), 0, 0.05, 0, g);
+    hazard.rotation.x = Math.PI / 2;
+    scene.add(g);
+    barrels.push({ o: g, x, z, hp: 1, exploded: false });
+  });
+}
+
+function explodeBarrel(index) {
+  const b = barrels[index];
+  if (!b || b.exploded) return;
+  b.exploded = true;
+  scene.remove(b.o);
+  addScorchDecal(b.x, b.z, 2.2);
+  createRealisticImpactFX(new THREE.Vector3(b.x, 1, b.z), false);
+  sfx.playExplosion(true);
+  HapticEngine.trigger('fire_heavy');
+  pushCombatFeed('💥 柴油油桶殉爆，冲击波横扫战场！');
+  const blast = new THREE.Vector3(b.x, 0, b.z);
+  enemies.slice().forEach(e => { if (blast.distanceTo(e.o.position) < 8.5) damageEnemy(e, 28, 'barrel'); });
+  if (blast.distanceTo(player.o.position) < 8.5 && player.invulnTimer <= 0) {
+    player.hp = Math.max(0, player.hp - 28);
+    player.invulnTimer = 0.45;
+    state.stats.currentWaveDamaged = true;
+    createRealisticImpactFX(player.o.position, true, true);
+    HapticEngine.trigger('hit_damage');
+    if (player.hp <= 0) finish(false);
+  }
+  barrels.forEach((other, j) => {
+    if (!other.exploded && j !== index && Math.hypot(other.x - b.x, other.z - b.z) < 7) setTimeout(() => explodeBarrel(j), 100);
+  });
+}
+
+function hitBarrel(shell) {
+  for (let i = 0; i < barrels.length; i++) {
+    const b = barrels[i];
+    if (b.exploded) continue;
+    if (Math.abs(shell.o.position.x - b.x) < 1.0 && Math.abs(shell.o.position.z - b.z) < 1.0 && shell.o.position.y < 2.3) {
+      explodeBarrel(i);
+      return true;
+    }
+  }
+  return false;
+}
+
+function spawnRedSmoke(x, z) {
+  for (let i = 0; i < 10; i++) {
+    const s = mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.2, 6, 6), new THREE.MeshBasicMaterial({ color: 0xd8442f, transparent: true, opacity: 0.6 }), x + (Math.random() - 0.5) * 1.2, 0.6, z + (Math.random() - 0.5) * 1.2);
+    smokeList.push({ o: s, v: new THREE.Vector3((Math.random() - 0.5) * 0.6, 0.9, (Math.random() - 0.5) * 0.6), t: 3, grow: 2 });
+  }
+}
+
+function spawnEndlessSingle(hpScale, spScale) {
+  spawnEnemy();
+  const e = enemies[enemies.length - 1];
+  if (e) { e.hp *= hpScale; e.speed *= spScale; }
+}
+
+function spawnEndlessWave(count, hpScale, spScale) {
+  for (let i = 0; i < count; i++) spawnEndlessSingle(hpScale, spScale);
+}
+
+function startEndless() {
+  state.mode = 'endless';
+  state.wave = 7;
+  state.time = 60;
+  state.pending = true;
+  state.between = 0;
+  state.respawnTimer = 0;
+  state.airdropTimer = 8;
+  state.awaitNext = false;
+  state.stats.currentWaveDamaged = false;
+  clearCombat();
+  resetBattlefieldScene();
+  player.hp = player.maxHp;
+  player.energy = 0;
+  player.invulnTimer = 0;
+  player.o.position.set(0, 0.05, 10);
+  player.angle = Math.PI;
+  player.turret.rotation.y = 0;
+  overlay.style.display = 'none';
+  difficultyEl.disabled = true;
+  state.run = true;
+  weatherSystem.applyWaveWeather(7);
+  radio.speak('BATTLE_START', 0);
+  spawnAllyTank();
+  pushCombatFeed('🔥【无尽防线】开启！敌潮永不停歇！');
+}
+
+function advanceEndlessRound() {
+  state.wave++;
+  state.time = 60;
+  state.pending = true;
+  state.between = 0;
+  state.respawnTimer = 0;
+  state.airdropTimer = Math.max(6, 12 - state.wave * 0.2);
+  state.stats.currentWaveDamaged = false;
+  const count = 6 + Math.floor(state.wave * 1.8);
+  const hpScale = 1 + (state.wave - 6) * 0.15;
+  const spScale = Math.min(1.5, 1 + (state.wave - 6) * 0.04);
+  spawnEndlessWave(count, hpScale, spScale);
+  pushCombatFeed(`无尽防线 第 ${state.wave} 波：${count} 辆敌车来袭！`);
+}
+
+function saveLeaderboardRecord() {
+  if (state.mode !== 'endless') return;
+  const accuracy = state.stats.shotsFired ? Math.round(state.stats.shotsHit / state.stats.shotsFired * 100) : 0;
+  LeaderboardSystem.saveRunRecord({ score: state.score, wave: state.wave, kills: state.stats.enemiesDestroyed, accuracy, flawless: state.stats.flawlessWaves, time: Math.round(clock.getElapsedTime()) });
+}
+
+function renderLeaderboard() {
+  const list = document.querySelector('#leaderboard-list');
+  if (!list) return;
+  const records = LeaderboardSystem.getRecords();
+  list.innerHTML = records.length ? records.slice(0, 6).map((r, i) => `<span>#${i + 1} ${r.score} 分 · 第 ${r.wave} 波 · ${r.kills} 击毁</span>`).join('') : '<span>暂无无尽防线战绩</span>';
+}
+
+function updateUltimateSystems(dt) {
+  updateTankPhysics(dt);
+  if (!state.run || state.paused) return;
+  state.distantCannonTimer -= dt;
+  if (state.distantCannonTimer <= 0) {
+    sfx.playDistantCannon();
+    state.distantCannonTimer = 6 + Math.random() * 8;
+  }
+  if (state.mode === 'endless' && !state.pending && state.time > 4) {
+    const hpScale = 1 + (state.wave - 6) * 0.15;
+    const spScale = Math.min(1.5, 1 + (state.wave - 6) * 0.04);
+    if (enemies.length < Math.min(12, 4 + state.wave)) {
+      state.respawnTimer -= dt;
+      if (state.respawnTimer <= 0) {
+        spawnEndlessSingle(hpScale, spScale);
+        state.respawnTimer = Math.max(0.7, 1.6 - state.wave * 0.04);
+      }
+    }
+  }
+}
+
+createBarrels();
+
 function isForcedLandscape() {
   return document.documentElement.classList.contains('forced-landscape');
 }
