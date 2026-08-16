@@ -746,16 +746,18 @@ h1 {
   pointer-events: none;
   touch-action: none;
 }
+
+/* 左侧虚拟底盘摇杆（固定在横屏/全设备的左下角） */
 .joystick-zone {
   position: absolute;
-  bottom: 26px;
-  left: 22px;
-  width: 130px;
-  height: 130px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  left: calc(24px + env(safe-area-inset-left));
+  width: 124px;
+  height: 124px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(12,28,26,0.65) 0%, rgba(4,14,16,0.85) 100%);
-  border: 2px solid rgba(80,227,164,0.6);
-  box-shadow: 0 0 18px rgba(80,227,164,0.3), inset 0 0 20px rgba(80,227,164,0.2);
+  background: radial-gradient(circle, rgba(12,28,26,0.7) 0%, rgba(4,14,16,0.9) 100%);
+  border: 2px solid rgba(80,227,164,0.7);
+  box-shadow: 0 0 20px rgba(80,227,164,0.35), inset 0 0 20px rgba(80,227,164,0.22);
   pointer-events: auto;
   touch-action: none;
   display: flex;
@@ -768,36 +770,37 @@ h1 {
   width: 68%;
   height: 68%;
   border-radius: 50%;
-  border: 1px dashed rgba(80,227,164,0.4);
+  border: 1px dashed rgba(80,227,164,0.45);
   pointer-events: none;
 }
 .joystick-zone::after {
   content: '底盘移动';
   position: absolute;
-  bottom: -20px;
+  bottom: -22px;
   font-size: 11px;
-  color: rgba(80,227,164,0.8);
+  color: rgba(80,227,164,0.9);
   letter-spacing: 1px;
-  font-weight: bold;
+  font-weight: 800;
   pointer-events: none;
 }
 .joystick-knob {
   position: absolute;
-  width: 52px;
-  height: 52px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: radial-gradient(circle, #50e3a4 0%, #175438 100%);
   border: 2px solid #a7f3d0;
-  box-shadow: 0 0 16px rgba(80,227,164,0.8);
+  box-shadow: 0 0 16px rgba(80,227,164,0.85);
   pointer-events: none;
   transform: translate(0, 0);
   will-change: transform;
 }
 
+/* 右侧作战按键集群（固定在横屏/全设备的右下角） */
 .mobile-action-cluster {
   position: absolute;
-  bottom: 24px;
-  right: 20px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  right: calc(24px + env(safe-area-inset-right));
   display: flex;
   align-items: flex-end;
   gap: 14px;
@@ -807,7 +810,7 @@ h1 {
 .mobile-sub-actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 .mobile-btn {
@@ -832,25 +835,25 @@ h1 {
   filter: brightness(1.25);
 }
 .mobile-btn.fire {
-  width: 78px;
-  height: 78px;
+  width: 80px;
+  height: 80px;
   background: radial-gradient(circle, #ff4d4f 0%, #991b1b 100%);
   border: 2.5px solid #ff7875;
-  box-shadow: 0 0 22px rgba(255, 77, 79, 0.75), 0 4px 14px rgba(0,0,0,0.6);
+  box-shadow: 0 0 24px rgba(255, 77, 79, 0.8), 0 4px 14px rgba(0,0,0,0.6);
 }
-.mobile-btn.fire span { font-size: 24px; line-height: 1; }
+.mobile-btn.fire span { font-size: 26px; line-height: 1; }
 .mobile-btn.fire b { font-size: 13px; margin-top: 2px; }
 
 .mobile-btn.sub {
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   border: 1.5px solid rgba(255,255,255,0.3);
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 .mobile-btn.sub.smoke {
   background: radial-gradient(circle, #38d9f5 0%, #0e7490 100%);
   border-color: #7dd3fc;
-  box-shadow: 0 0 14px rgba(56, 217, 245, 0.45);
+  box-shadow: 0 0 14px rgba(56, 217, 245, 0.5);
 }
 .mobile-btn.sub.smoke span { font-size: 18px; line-height: 1; }
 .mobile-btn.sub.smoke b { font-size: 10px; }
@@ -858,23 +861,23 @@ h1 {
 .mobile-btn.sub.ult {
   background: radial-gradient(circle, #f5c842 0%, #b45309 100%);
   border-color: #fde047;
-  box-shadow: 0 0 16px rgba(245, 200, 66, 0.55);
+  box-shadow: 0 0 16px rgba(245, 200, 66, 0.6);
 }
 .mobile-btn.sub.ult span { font-size: 18px; line-height: 1; }
 .mobile-btn.sub.ult b { font-size: 10px; }
 
 .mobile-top-bar {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: calc(10px + env(safe-area-inset-top));
+  right: calc(14px + env(safe-area-inset-right));
   display: flex;
   gap: 8px;
   pointer-events: auto;
   z-index: 30;
 }
 .mobile-icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: rgba(14,28,30,0.85);
   border: 1px solid rgba(80,227,164,0.45);
@@ -889,7 +892,7 @@ h1 {
 }
 .mobile-icon-btn:active { background: rgba(24,48,44,0.95); transform: scale(0.94); }
 
-/* 手机移动端默认横屏提示条 */
+/* 手机移动端横屏建议提示条 */
 #orientation-hint {
   position: fixed;
   top: max(10px, env(safe-area-inset-top));
@@ -932,7 +935,7 @@ h1 {
   .radar-box { display: none !important; }
   .tip-banner { display: none !important; }
   
-  /* 移动端彻底隐藏底部栏容器，彻底清空左下角 */
+  /* 移动端隐藏底部快捷文字栏，完全释放战区与双角操控空间 */
   .bottom-bar {
     display: none !important;
   }
@@ -944,29 +947,29 @@ h1 {
     left: 50% !important;
     transform: translateX(-50%) !important;
     bottom: auto !important;
-    width: min(200px, 34vw) !important;
+    width: min(220px, 36vw) !important;
     min-width: 0 !important;
     padding: 4px 10px !important;
-    background: rgba(6, 14, 18, 0.45) !important;
-    backdrop-filter: blur(5px) !important;
-    border: 1px solid rgba(80, 227, 164, 0.25) !important;
+    background: rgba(6, 14, 18, 0.55) !important;
+    backdrop-filter: blur(6px) !important;
+    border: 1px solid rgba(80, 227, 164, 0.3) !important;
     border-radius: 16px !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
-    opacity: 0.82 !important;
+    opacity: 0.9 !important;
     pointer-events: none !important;
     z-index: 12 !important;
   }
   .unit-status .status-label-row {
-    font-size: 9px !important;
+    font-size: 9.5px !important;
     margin-bottom: 2px !important;
-    color: rgba(168, 192, 181, 0.85) !important;
+    color: rgba(168, 192, 181, 0.9) !important;
   }
   .unit-status .health-bar-bg,
   .unit-status .energy-bar-bg {
-    height: 4px !important;
+    height: 5px !important;
     margin-bottom: 2px !important;
-    border-radius: 2px !important;
-    border-color: rgba(140, 180, 165, 0.25) !important;
+    border-radius: 3px !important;
+    border-color: rgba(140, 180, 165, 0.3) !important;
   }
   .skills-row {
     display: none !important; /* 隐藏键盘技能提示 */
@@ -974,26 +977,26 @@ h1 {
 
   /* 顶部状态与品牌 */
   .brand-card {
-    transform: scale(0.68) !important;
+    transform: scale(0.72) !important;
     transform-origin: top left !important;
-    background: rgba(8, 16, 20, 0.45) !important;
-    border-color: rgba(80, 227, 164, 0.2) !important;
+    background: rgba(8, 16, 20, 0.55) !important;
+    border-color: rgba(80, 227, 164, 0.25) !important;
     padding: 4px 8px !important;
     box-shadow: none !important;
-    opacity: 0.85 !important;
+    opacity: 0.9 !important;
   }
   .brand-card .small { display: none !important; }
   .top-bar .music-controller { display: none !important; }
   
   .stats-board {
-    transform: scale(0.7) !important;
+    transform: scale(0.72) !important;
     transform-origin: top right !important;
-    background: rgba(8, 16, 20, 0.45) !important;
-    border-color: rgba(80, 227, 164, 0.2) !important;
+    background: rgba(8, 16, 20, 0.55) !important;
+    border-color: rgba(80, 227, 164, 0.25) !important;
     padding: 4px 8px !important;
     gap: 8px !important;
     box-shadow: none !important;
-    opacity: 0.85 !important;
+    opacity: 0.9 !important;
   }
 
   /* 友军先锋状态微型半透明化 */
@@ -1001,12 +1004,12 @@ h1 {
     top: calc(44px + env(safe-area-inset-top)) !important;
     left: calc(10px + env(safe-area-inset-left)) !important;
     bottom: auto !important;
-    transform: scale(0.68) !important;
+    transform: scale(0.72) !important;
     transform-origin: top left !important;
-    background: rgba(6, 14, 18, 0.4) !important;
+    background: rgba(6, 14, 18, 0.45) !important;
     backdrop-filter: blur(4px) !important;
-    border: 1px solid rgba(80, 227, 164, 0.2) !important;
-    opacity: 0.72 !important;
+    border: 1px solid rgba(80, 227, 164, 0.25) !important;
+    opacity: 0.8 !important;
     min-width: 140px !important;
     padding: 6px 10px !important;
   }
@@ -1016,74 +1019,18 @@ h1 {
     top: calc(44px + env(safe-area-inset-top)) !important;
     right: calc(10px + env(safe-area-inset-right)) !important;
     bottom: auto !important;
-    transform: scale(0.68) !important;
+    transform: scale(0.72) !important;
     transform-origin: top right !important;
-    background: rgba(6, 14, 18, 0.4) !important;
+    background: rgba(6, 14, 18, 0.45) !important;
     backdrop-filter: blur(4px) !important;
-    border: 1px solid rgba(80, 227, 164, 0.2) !important;
-    opacity: 0.72 !important;
+    border: 1px solid rgba(80, 227, 164, 0.25) !important;
+    opacity: 0.8 !important;
     width: 190px !important;
     padding: 6px 8px !important;
   }
   #tactical-support-hud button {
     min-height: 32px !important;
     font-size: 10px !important;
-  }
-
-  /* 左侧虚拟底盘摇杆 */
-  .joystick-zone {
-    width: 105px !important;
-    height: 105px !important;
-    bottom: calc(14px + env(safe-area-inset-bottom)) !important;
-    left: calc(16px + env(safe-area-inset-left)) !important;
-    background: radial-gradient(circle, rgba(12, 28, 26, 0.45) 0%, rgba(4, 14, 16, 0.65) 100%) !important;
-    border: 1.5px solid rgba(80, 227, 164, 0.45) !important;
-    box-shadow: 0 0 14px rgba(80, 227, 164, 0.2) !important;
-    opacity: 0.85 !important;
-  }
-  .joystick-knob {
-    width: 42px !important;
-    height: 42px !important;
-    opacity: 0.9 !important;
-  }
-  .joystick-zone::after {
-    font-size: 9.5px !important;
-    bottom: -16px !important;
-    opacity: 0.75;
-  }
-
-  /* 右侧作战按键集群 */
-  .mobile-action-cluster {
-    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
-    right: calc(14px + env(safe-area-inset-right)) !important;
-    gap: 10px !important;
-    opacity: 0.88;
-  }
-  .mobile-btn.fire {
-    width: 66px !important;
-    height: 66px !important;
-  }
-  .mobile-btn.fire span { font-size: 20px !important; }
-  .mobile-btn.fire b { font-size: 11px !important; }
-  .mobile-btn.sub {
-    width: 42px !important;
-    height: 42px !important;
-  }
-  .mobile-btn.sub span { font-size: 15px !important; }
-  .mobile-btn.sub b { font-size: 8.5px !important; }
-
-  /* 移动端顶部快捷悬浮栏 */
-  .mobile-top-bar {
-    top: calc(8px + env(safe-area-inset-top)) !important;
-    right: calc(120px + env(safe-area-inset-right)) !important;
-    gap: 6px !important;
-  }
-  .mobile-icon-btn {
-    width: 32px !important;
-    height: 32px !important;
-    font-size: 13px !important;
-    background: rgba(14, 28, 30, 0.6) !important;
-    border-color: rgba(80, 227, 164, 0.35) !important;
   }
 
   /* 弹窗与勋章适配 */
@@ -1100,83 +1047,7 @@ h1 {
   .upgrade-card span { font-size: 10.5px !important; }
   .medal { padding: 6px 8px !important; }
 }
-/* 强制横屏兜底：竖屏锁定也能直接横屏显示，不依赖全屏接口 */
-html.forced-landscape body {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vh !important;
-  height: 100vw !important;
-  overflow: hidden !important;
-  transform: rotate(90deg) translateY(-100%);
-  transform-origin: top left;
-}
-html.forced-landscape #orientation-hint { display: none !important; }
-html.forced-landscape #hud {
-  padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
-}
-html.forced-landscape .brand-card { transform: scale(0.74); transform-origin: top left; }
-html.forced-landscape .stats-board { transform: scale(0.74); transform-origin: top right; }
-html.forced-landscape .unit-status { width: min(56vh, 470px) !important; }
-html.forced-landscape .bottom-bar { align-items: flex-end; }
-html.forced-landscape .radar-box { display: none; }
-html.forced-landscape .joystick-zone {
-  width: 108px !important;
-  height: 108px !important;
-  bottom: calc(12px + env(safe-area-inset-bottom)) !important;
-  right: calc(14px + env(safe-area-inset-right)) !important;
-  left: auto !important;
-}
-html.forced-landscape .joystick-knob { width: 44px !important; height: 44px !important; }
-html.forced-landscape .joystick-zone::after { font-size: 10px !important; bottom: -17px !important; }
-html.forced-landscape .mobile-action-cluster {
-  top: calc(10px + env(safe-area-inset-top)) !important;
-  right: calc(12px + env(safe-area-inset-right)) !important;
-  bottom: auto !important;
-  gap: 10px !important;
-}
-html.forced-landscape .mobile-btn.fire { width: 64px !important; height: 64px !important; }
-html.forced-landscape .mobile-btn.fire span { font-size: 20px !important; }
-html.forced-landscape .mobile-btn.sub { width: 42px !important; height: 42px !important; }
-html.forced-landscape .mobile-btn.sub span { font-size: 15px !important; }
-html.forced-landscape .mobile-top-bar {
-  top: calc(8px + env(safe-area-inset-top)) !important;
-  left: calc(10px + env(safe-area-inset-left)) !important;
-  right: auto !important;
-}
-html.forced-landscape .mobile-icon-btn { width: 34px !important; height: 34px !important; font-size: 14px !important; }
-html.forced-landscape #ally-monitor {
-  bottom: calc(58px + env(safe-area-inset-bottom)) !important;
-  left: calc(10px + env(safe-area-inset-left)) !important;
-  top: auto !important;
-  min-width: 176px !important;
-}
-html.forced-landscape #tactical-support-hud {
-  bottom: calc(58px + env(safe-area-inset-bottom)) !important;
-  right: calc(10px + env(safe-area-inset-right)) !important;
-  top: auto !important;
-  width: 196px !important;
-}
-html.forced-landscape .panel {
-  width: min(620px, calc(100vh - 40px)) !important;
-  max-height: calc(100vw - 24px) !important;
-  padding: 18px 22px !important;
-}
-html.forced-landscape .panel-banner { height: 118px !important; }
-html.forced-landscape .history-card { max-height: 64px !important; }
-html.forced-landscape #upgrade-overlay .progression-shell,
-html.forced-landscape #medal-overlay .progression-shell {
-  width: min(680px, calc(100vh - 24px)) !important;
-  max-height: calc(100vw - 20px) !important;
-  overflow-y: auto !important;
-}
-html.forced-landscape .progression-shell { padding: 14px 18px !important; }
-html.forced-landscape .progression-shell h2 { font-size: 18px !important; margin: 0 0 6px !important; }
-html.forced-landscape .upgrade-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-html.forced-landscape .medal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-html.forced-landscape .upgrade-card { min-height: 84px !important; padding: 10px !important; }
-html.forced-landscape .upgrade-card span { font-size: 11px !important; }
-html.forced-landscape .medal { padding: 8px !important; }
+
 </style>
 </head>
 <body>
@@ -2972,11 +2843,6 @@ function bindLeftJoystick(element, control) {
     const cy = rect.top + rect.height / 2;
     let dx = event.clientX - cx;
     let dy = event.clientY - cy;
-    if (isForcedLandscape()) {
-      const swap = dx;
-      dx = dy;
-      dy = -swap;
-    }
     const maxRadius = 48;
     const distance = Math.min(maxRadius, Math.hypot(dx, dy));
     const angle = Math.atan2(dy, dx);
@@ -3026,11 +2892,6 @@ function bindScreenTouchLook() {
     if (touchControls.touchLook.active && event.pointerId === touchControls.touchLook.pointerId) {
       let dx = event.clientX - touchControls.touchLook.lastX;
       let dy = event.clientY - touchControls.touchLook.lastY;
-      if (isForcedLandscape()) {
-        const swap = dx;
-        dx = dy;
-        dy = -swap;
-      }
       touchControls.touchLook.lastX = event.clientX;
       touchControls.touchLook.lastY = event.clientY;
 
@@ -4877,25 +4738,14 @@ addEventListener('mousemove', e => {
 function requestLandscapeMode() {
   const el = document.documentElement;
   const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen || el.mozRequestFullScreen;
-  const applyFallback = () => setTimeout(() => {
-    if (innerWidth < innerHeight) applyForcedLandscape();
-  }, 500);
   if (requestFS) {
     requestFS.call(el).then(() => {
       if (screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
       }
-    }).catch(() => {
-      if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock('landscape').catch(() => {});
-      }
-    });
-    applyFallback();
+    }).catch(() => {});
   } else if (screen.orientation && screen.orientation.lock) {
     screen.orientation.lock('landscape').catch(() => {});
-    applyFallback();
-  } else {
-    applyFallback();
   }
 }
 
@@ -5259,38 +5109,24 @@ function updateUltimateSystems(dt) {
 
 createBarrels();
 
-function isForcedLandscape() {
-  return document.documentElement.classList.contains('forced-landscape');
-}
-function applyForcedLandscape() {
-  const touch = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
-  if (!touch || innerWidth >= innerHeight) {
-    releaseForcedLandscape();
-    return;
+window.addEventListener('resize', () => {
+  updateCameraFov();
+  if (innerWidth > innerHeight) {
+    document.querySelector('#orientation-hint')?.classList.remove('show');
+  } else {
+    showOrientationHint();
   }
-  document.documentElement.classList.add('forced-landscape');
-  renderer.setSize(innerHeight, innerWidth);
-  camera.aspect = innerHeight / innerWidth;
-  camera.updateProjectionMatrix();
-}
-function releaseForcedLandscape() {
-  if (!isForcedLandscape()) return;
-  document.documentElement.classList.remove('forced-landscape');
-  renderer.setSize(innerWidth, innerHeight);
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-}
-addEventListener('resize', () => {
-  if (innerWidth > innerHeight) releaseForcedLandscape();
-  else if (isForcedLandscape()) applyForcedLandscape();
 });
 window.addEventListener('orientationchange', () => {
   setTimeout(() => {
-    if (innerWidth > innerHeight) releaseForcedLandscape();
-    else if (isForcedLandscape()) applyForcedLandscape();
-  }, 250);
+    updateCameraFov();
+    if (innerWidth > innerHeight) {
+      document.querySelector('#orientation-hint')?.classList.remove('show');
+    } else {
+      showOrientationHint();
+    }
+  }, 200);
 });
-applyForcedLandscape();
 
 start.onclick = begin;
 preloadGameAssets();
