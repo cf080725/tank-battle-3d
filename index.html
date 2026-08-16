@@ -625,16 +625,270 @@ h1 {
   transform: translateY(0);
 }
 
-@media(max-width: 768px) {
-  #hud { padding: 14px; }
-  .radar-box { display: none; }
-  .tip-banner { display: none; }
-  .brand-card { padding: 8px 12px; }
-  .stats-board { padding: 8px 14px; gap: 10px; }
-  .stat-item b { font-size: 17px; }
-  .unit-status { min-width: 240px; }
+/* ==========================================================================
+   战术支援 HUD 与 友军先锋 基础样式
+   ========================================================================== */
+#tactical-support-hud {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 16;
+  width: 260px;
+  padding: 10px;
+  border: 1px solid rgba(80,227,164,.35);
+  background: rgba(8,18,21,.9);
+  box-shadow: 0 10px 28px rgba(0,0,0,.42);
+  font: 12px/1.35 sans-serif;
+  color: #d7e8e1;
+  pointer-events: auto;
 }
-/* 手机移动端默认横屏：非阻塞提示条，不挡任何操作 */
+#tactical-support-hud .support-title {
+  display: flex;
+  justify-content: space-between;
+  color: #50e3a4;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+#tactical-support-hud .support-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+#tactical-support-hud button {
+  min-height: 48px;
+  border: 1px solid rgba(140,180,165,.32);
+  background: #132621;
+  color: #dcece5;
+  font: 700 11px sans-serif;
+  cursor: pointer;
+}
+#tactical-support-hud button:hover, #tactical-support-hud button.ready {
+  border-color: #f5c842;
+  color: #f5c842;
+  background: #28321f;
+}
+
+#ally-monitor {
+  position: fixed;
+  left: 28px;
+  bottom: 24px;
+  z-index: 16;
+  min-width: 210px;
+  padding: 9px 12px;
+  border-left: 3px solid #50e3a4;
+  background: rgba(8,18,21,.86);
+  font: 12px sans-serif;
+  color: #dcece5;
+  display: none;
+}
+#ally-monitor .ally-bar {
+  height: 5px;
+  background: #1a3029;
+  margin-top: 6px;
+}
+#ally-monitor .ally-bar i {
+  display: block;
+  height: 100%;
+  background: #50e3a4;
+  transition: width .15s;
+}
+
+/* ==========================================================================
+   暂停面板与移动端触控层 基础样式
+   ========================================================================== */
+#pause-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: none;
+  place-items: center;
+  background: rgba(3,9,12,0.85);
+  backdrop-filter: blur(10px);
+}
+#pause-layer .pause-panel {
+  width: min(340px, calc(100vw - 32px));
+  padding: 24px;
+  background: #111c1a;
+  border: 1px solid rgba(80,227,164,0.4);
+  text-align: center;
+  color: #e9f4ef;
+  border-radius: 8px;
+}
+#pause-layer h2 {
+  margin: 0 0 16px;
+  color: #50e3a4;
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+#pause-layer button {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  min-height: 46px;
+  border: 1px solid rgba(140,180,165,0.35);
+  background: #18302a;
+  color: #e9f4ef;
+  font-weight: 700;
+  font-size: 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#pause-layer button:active { background: #23483f; }
+
+#touch-controls {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  pointer-events: none;
+  touch-action: none;
+}
+.joystick-zone {
+  position: absolute;
+  bottom: 26px;
+  left: 22px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(12,28,26,0.65) 0%, rgba(4,14,16,0.85) 100%);
+  border: 2px solid rgba(80,227,164,0.6);
+  box-shadow: 0 0 18px rgba(80,227,164,0.3), inset 0 0 20px rgba(80,227,164,0.2);
+  pointer-events: auto;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.joystick-zone::before {
+  content: '';
+  position: absolute;
+  width: 68%;
+  height: 68%;
+  border-radius: 50%;
+  border: 1px dashed rgba(80,227,164,0.4);
+  pointer-events: none;
+}
+.joystick-zone::after {
+  content: '底盘移动';
+  position: absolute;
+  bottom: -20px;
+  font-size: 11px;
+  color: rgba(80,227,164,0.8);
+  letter-spacing: 1px;
+  font-weight: bold;
+  pointer-events: none;
+}
+.joystick-knob {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #50e3a4 0%, #175438 100%);
+  border: 2px solid #a7f3d0;
+  box-shadow: 0 0 16px rgba(80,227,164,0.8);
+  pointer-events: none;
+  transform: translate(0, 0);
+  will-change: transform;
+}
+
+.mobile-action-cluster {
+  position: absolute;
+  bottom: 24px;
+  right: 20px;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  pointer-events: auto;
+  touch-action: none;
+}
+.mobile-sub-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.mobile-btn {
+  border: none;
+  outline: none;
+  border-radius: 50%;
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.08s, filter 0.12s;
+}
+.mobile-btn:active {
+  transform: scale(0.92);
+  filter: brightness(1.25);
+}
+.mobile-btn.fire {
+  width: 78px;
+  height: 78px;
+  background: radial-gradient(circle, #ff4d4f 0%, #991b1b 100%);
+  border: 2.5px solid #ff7875;
+  box-shadow: 0 0 22px rgba(255, 77, 79, 0.75), 0 4px 14px rgba(0,0,0,0.6);
+}
+.mobile-btn.fire span { font-size: 24px; line-height: 1; }
+.mobile-btn.fire b { font-size: 13px; margin-top: 2px; }
+
+.mobile-btn.sub {
+  width: 50px;
+  height: 50px;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.mobile-btn.sub.smoke {
+  background: radial-gradient(circle, #38d9f5 0%, #0e7490 100%);
+  border-color: #7dd3fc;
+  box-shadow: 0 0 14px rgba(56, 217, 245, 0.45);
+}
+.mobile-btn.sub.smoke span { font-size: 18px; line-height: 1; }
+.mobile-btn.sub.smoke b { font-size: 10px; }
+
+.mobile-btn.sub.ult {
+  background: radial-gradient(circle, #f5c842 0%, #b45309 100%);
+  border-color: #fde047;
+  box-shadow: 0 0 16px rgba(245, 200, 66, 0.55);
+}
+.mobile-btn.sub.ult span { font-size: 18px; line-height: 1; }
+.mobile-btn.sub.ult b { font-size: 10px; }
+
+.mobile-top-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+  z-index: 30;
+}
+.mobile-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(14,28,30,0.85);
+  border: 1px solid rgba(80,227,164,0.45);
+  color: #50e3a4;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.mobile-icon-btn:active { background: rgba(24,48,44,0.95); transform: scale(0.94); }
+
+/* 手机移动端默认横屏提示条 */
 #orientation-hint {
   position: fixed;
   top: max(10px, env(safe-area-inset-top));
@@ -668,45 +922,28 @@ h1 {
     display: none;
   }
 }
-@media (orientation: landscape) and (max-width: 950px), (max-height: 550px) {
-  #hud {
-    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-    pointer-events: none;
-  }
-  
-  /* 顶部品牌与音乐栏微型化/淡化 */
-  .brand-card {
-    transform: scale(0.68);
-    transform-origin: top left;
-    background: rgba(8, 16, 20, 0.45) !important;
-    border-color: rgba(80, 227, 164, 0.2) !important;
-    padding: 4px 8px !important;
-    box-shadow: none !important;
-    opacity: 0.85;
-  }
-  .brand-card .small { display: none; }
-  .top-bar .music-controller { display: none; } /* 移动端已集成至右上角悬浮控制栏 */
-  
-  /* 右上角战场状态牌微型化/半透明 */
-  .stats-board {
-    transform: scale(0.7);
-    transform-origin: top right;
-    background: rgba(8, 16, 20, 0.45) !important;
-    border-color: rgba(80, 227, 164, 0.2) !important;
-    padding: 4px 8px !important;
-    gap: 8px !important;
-    box-shadow: none !important;
-    opacity: 0.85;
-  }
 
-  /* 玩家装甲生命/能量状态条：微型化药丸胶囊置于顶部居中，彻底释放左下角摇杆与作战全景视野 */
+/* ==========================================================================
+   全设备移动触控 & 横屏通用适配 (针对移动设备彻底解决 HUD 遮挡)
+   ========================================================================== */
+@media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+  #touch-controls { display: block !important; }
+  .radar-box { display: none !important; }
+  .tip-banner { display: none !important; }
+  
+  /* 移动端彻底隐藏底部栏容器，彻底清空左下角 */
+  .bottom-bar {
+    display: none !important;
+  }
+  
+  /* 玩家血量与能量条：以极简半透明胶囊置于顶部居中，完全释放战场与摇杆空间 */
   .unit-status {
     position: fixed !important;
     top: max(6px, env(safe-area-inset-top)) !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
     bottom: auto !important;
-    width: min(210px, 28vw) !important;
+    width: min(200px, 34vw) !important;
     min-width: 0 !important;
     padding: 4px 10px !important;
     background: rgba(6, 14, 18, 0.45) !important;
@@ -725,17 +962,37 @@ h1 {
   }
   .unit-status .health-bar-bg,
   .unit-status .energy-bar-bg {
-    height: 4.5px !important;
-    margin-bottom: 2.5px !important;
+    height: 4px !important;
+    margin-bottom: 2px !important;
     border-radius: 2px !important;
     border-color: rgba(140, 180, 165, 0.25) !important;
   }
-  /* 隐藏移动端冗余的键盘按键标签 */
   .skills-row {
-    display: none !important;
+    display: none !important; /* 隐藏键盘技能提示 */
   }
-  .bottom-bar {
-    display: none !important; /* 彻底清空底部遮挡 */
+
+  /* 顶部状态与品牌 */
+  .brand-card {
+    transform: scale(0.68) !important;
+    transform-origin: top left !important;
+    background: rgba(8, 16, 20, 0.45) !important;
+    border-color: rgba(80, 227, 164, 0.2) !important;
+    padding: 4px 8px !important;
+    box-shadow: none !important;
+    opacity: 0.85 !important;
+  }
+  .brand-card .small { display: none !important; }
+  .top-bar .music-controller { display: none !important; }
+  
+  .stats-board {
+    transform: scale(0.7) !important;
+    transform-origin: top right !important;
+    background: rgba(8, 16, 20, 0.45) !important;
+    border-color: rgba(80, 227, 164, 0.2) !important;
+    padding: 4px 8px !important;
+    gap: 8px !important;
+    box-shadow: none !important;
+    opacity: 0.85 !important;
   }
 
   /* 友军先锋状态微型半透明化 */
@@ -764,11 +1021,11 @@ h1 {
     backdrop-filter: blur(4px) !important;
     border: 1px solid rgba(80, 227, 164, 0.2) !important;
     opacity: 0.72 !important;
-    width: 200px !important;
+    width: 190px !important;
     padding: 6px 8px !important;
   }
   #tactical-support-hud button {
-    min-height: 34px !important;
+    min-height: 32px !important;
     font-size: 10px !important;
   }
 
@@ -2063,9 +2320,6 @@ const allyTank = {
 
 function ensureTacticalHud() {
   if (document.querySelector('#tactical-support-hud')) return;
-  const style = document.createElement('style');
-  style.textContent = '#tactical-support-hud{position:fixed;right:28px;bottom:28px;z-index:16;width:260px;padding:10px;border:1px solid rgba(80,227,164,.35);background:rgba(8,18,21,.9);box-shadow:0 10px 28px rgba(0,0,0,.42);font:12px/1.35 sans-serif;color:#d7e8e1;pointer-events:auto}#tactical-support-hud .support-title{display:flex;justify-content:space-between;color:#50e3a4;font-weight:800;letter-spacing:1px;margin-bottom:8px}#tactical-support-hud .support-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}#tactical-support-hud button{min-height:48px;border:1px solid rgba(140,180,165,.32);background:#132621;color:#dcece5;font:700 11px sans-serif;cursor:pointer}#tactical-support-hud button:hover,#tactical-support-hud button.ready{border-color:#f5c842;color:#f5c842;background:#28321f}#ally-monitor{position:fixed;left:28px;bottom:24px;z-index:16;min-width:210px;padding:9px 12px;border-left:3px solid #50e3a4;background:rgba(8,18,21,.86);font:12px sans-serif;color:#dcece5;display:none}#ally-monitor .ally-bar{height:5px;background:#1a3029;margin-top:6px}#ally-monitor .ally-bar i{display:block;height:100%;background:#50e3a4;transition:width .15s}@media(max-width:768px){#tactical-support-hud{right:12px;bottom:112px;width:230px}#ally-monitor{left:12px;bottom:104px}}';
-  document.head.appendChild(style);
   const hud = document.createElement('section');
   hud.id = 'tactical-support-hud';
   hud.innerHTML = '<div class="support-title"><span>战术指挥支援</span><b id="tp-readout">TP 0 / 100</b></div><div class="support-grid"><button data-support="artillery">[1] 火箭炮</button><button data-support="smoke">[2] 烟幕</button><button data-support="recon">[3] 侦察</button></div>';
@@ -2451,115 +2705,6 @@ const performanceAdaptive = { accumulator: 0, samples: 0, total: 0, pixelRatio: 
 
 function ensureControlUi() {
   if (document.querySelector('#pause-layer')) return;
-  const style = document.createElement('style');
-  style.textContent = `
-    #pause-layer {
-      position: fixed; inset: 0; z-index: 55; display: none; place-items: center;
-      background: rgba(3,9,12,0.85); backdrop-filter: blur(10px);
-    }
-    #pause-layer .pause-panel {
-      width: min(340px, calc(100vw - 32px)); padding: 24px;
-      background: #111c1a; border: 1px solid rgba(80,227,164,0.4); text-align: center; color: #e9f4ef; border-radius: 8px;
-    }
-    #pause-layer h2 { margin: 0 0 16px; color: #50e3a4; font-size: 20px; letter-spacing: 1px; }
-    #pause-layer button {
-      display: block; width: 100%; margin-top: 10px; min-height: 46px;
-      border: 1px solid rgba(140,180,165,0.35); background: #18302a; color: #e9f4ef;
-      font-weight: 700; font-size: 15px; border-radius: 4px; cursor: pointer; transition: background 0.2s;
-    }
-    #pause-layer button:active { background: #23483f; }
-
-    /* 移动端全屏触控层 */
-    #touch-controls {
-      position: fixed; inset: 0; z-index: 20; display: none; pointer-events: none; touch-action: none;
-    }
-    @media (max-width: 900px), (hover: none) and (pointer: coarse) {
-      #touch-controls { display: block; }
-      #hud { padding: 10px; }
-      .brand-card { transform: scale(0.82); transform-origin: top left; }
-      .stats-board { transform: scale(0.8); transform-origin: top right; }
-      .unit-status { width: calc(100vw - 24px); }
-      .bottom-bar { align-items: flex-end; }
-      .radar-box { display: none; }
-    }
-
-    /* 左侧虚拟底盘摇杆 */
-    .joystick-zone {
-      position: absolute; bottom: 26px; left: 22px; width: 130px; height: 130px;
-      border-radius: 50%; background: radial-gradient(circle, rgba(12,28,26,0.65) 0%, rgba(4,14,16,0.85) 100%);
-      border: 2px solid rgba(80,227,164,0.6); box-shadow: 0 0 18px rgba(80,227,164,0.3), inset 0 0 20px rgba(80,227,164,0.2);
-      pointer-events: auto; touch-action: none; display: flex; align-items: center; justify-content: center;
-    }
-    .joystick-zone::before {
-      content: ''; position: absolute; width: 68%; height: 68%; border-radius: 50%;
-      border: 1px dashed rgba(80,227,164,0.4); pointer-events: none;
-    }
-    .joystick-zone::after {
-      content: '底盘移动'; position: absolute; bottom: -20px; font-size: 11px; color: rgba(80,227,164,0.8);
-      letter-spacing: 1px; font-weight: bold; pointer-events: none;
-    }
-    .joystick-knob {
-      position: absolute; width: 52px; height: 52px; border-radius: 50%;
-      background: radial-gradient(circle, #50e3a4 0%, #175438 100%);
-      border: 2px solid #a7f3d0; box-shadow: 0 0 16px rgba(80,227,164,0.8);
-      pointer-events: none; transform: translate(0, 0); will-change: transform;
-    }
-
-    /* 右侧作战按键集群 */
-    .mobile-action-cluster {
-      position: absolute; bottom: 24px; right: 20px; display: flex; align-items: flex-end; gap: 14px;
-      pointer-events: auto; touch-action: none;
-    }
-    .mobile-sub-actions {
-      display: flex; flex-direction: column; gap: 10px; align-items: center;
-    }
-    .mobile-btn {
-      border: none; outline: none; border-radius: 50%; color: #fff; font-family: inherit; font-weight: 700;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
-      touch-action: none; user-select: none; -webkit-user-select: none; transition: transform 0.08s, filter 0.12s;
-    }
-    .mobile-btn:active { transform: scale(0.92); filter: brightness(1.25); }
-    .mobile-btn.fire {
-      width: 78px; height: 78px;
-      background: radial-gradient(circle, #ff4d4f 0%, #991b1b 100%);
-      border: 2.5px solid #ff7875;
-      box-shadow: 0 0 22px rgba(255, 77, 79, 0.75), 0 4px 14px rgba(0,0,0,0.6);
-    }
-    .mobile-btn.fire span { font-size: 24px; line-height: 1; }
-    .mobile-btn.fire b { font-size: 13px; margin-top: 2px; }
-    
-    .mobile-btn.sub {
-      width: 50px; height: 50px; border: 1.5px solid rgba(255,255,255,0.3);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    }
-    .mobile-btn.sub.smoke {
-      background: radial-gradient(circle, #38d9f5 0%, #0e7490 100%);
-      border-color: #7dd3fc; box-shadow: 0 0 14px rgba(56, 217, 245, 0.45);
-    }
-    .mobile-btn.sub.smoke span { font-size: 18px; line-height: 1; }
-    .mobile-btn.sub.smoke b { font-size: 10px; }
-
-    .mobile-btn.sub.ult {
-      background: radial-gradient(circle, #f5c842 0%, #b45309 100%);
-      border-color: #fde047; box-shadow: 0 0 16px rgba(245, 200, 66, 0.55);
-    }
-    .mobile-btn.sub.ult span { font-size: 18px; line-height: 1; }
-    .mobile-btn.sub.ult b { font-size: 10px; }
-
-    /* 移动端顶部快捷控制栏 (暂停/号角) */
-    .mobile-top-bar {
-      position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; pointer-events: auto; z-index: 30;
-    }
-    .mobile-icon-btn {
-      width: 40px; height: 40px; border-radius: 50%; background: rgba(14,28,30,0.85);
-      border: 1px solid rgba(80,227,164,0.45); color: #50e3a4; font-size: 16px; font-weight: bold;
-      display: flex; align-items: center; justify-content: center; cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    }
-    .mobile-icon-btn:active { background: rgba(24,48,44,0.95); transform: scale(0.94); }
-  `;
-  document.head.appendChild(style);
-
   const pause = document.createElement('section');
   pause.id = 'pause-layer';
   pause.innerHTML = '<div class="pause-panel"><h2>战术暂停</h2><button id="resume-game">继续作战</button><button id="retry-game">重新整备</button><button id="quit-game">返回战区菜单</button></div>';
@@ -4431,22 +4576,31 @@ function requestLandscapeMode() {
   }
 }
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+function updateCameraFov() {
+  const aspect = innerWidth / innerHeight;
+  if (aspect < 1.0) {
+    camera.fov = Math.min(85, Math.max(54, 2 * Math.atan(Math.tan(48 * Math.PI / 360) / aspect) * 180 / Math.PI));
+  } else {
+    camera.fov = 54;
+  }
+  camera.aspect = aspect;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+}
+updateCameraFov();
+
+addEventListener('resize', () => {
+  updateCameraFov();
   if (innerWidth > innerHeight) {
-      document.querySelector('#orientation-hint')?.classList.remove('show');
-    } else {
-      showOrientationHint();
-    }
+    document.querySelector('#orientation-hint')?.classList.remove('show');
+  } else {
+    showOrientationHint();
+  }
 });
 
 window.addEventListener('orientationchange', () => {
   setTimeout(() => {
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
+    updateCameraFov();
     if (innerWidth > innerHeight) {
       document.querySelector('#orientation-hint')?.classList.remove('show');
     } else {
