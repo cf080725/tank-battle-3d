@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>白岭防线 | 3D Tank Battle</title>
 <style>
 :root {
@@ -634,9 +634,171 @@ h1 {
   .stat-item b { font-size: 17px; }
   .unit-status { min-width: 240px; }
 }
+/* 手机移动端横屏专属引导与交互层 */
+#orientation-hint {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 10, 14, 0.96);
+  backdrop-filter: blur(14px);
+  color: #eef7f2;
+}
+#orientation-hint.dismissed {
+  display: none !important;
+}
+@media (orientation: portrait) and (max-width: 900px) {
+  #orientation-hint:not(.dismissed) {
+    display: grid;
+  }
+}
+.orientation-box {
+  max-width: 360px;
+  width: 100%;
+  background: rgba(14, 28, 30, 0.94);
+  border: 1px solid rgba(80, 227, 164, 0.45);
+  border-radius: 12px;
+  padding: 28px 22px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 30px rgba(80, 227, 164, 0.2);
+}
+.phone-rotate-anim {
+  display: inline-block;
+  margin-bottom: 16px;
+  animation: phoneRotateAnim 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes phoneRotateAnim {
+  0%, 15% { transform: rotate(0deg); }
+  50%, 75% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+.orientation-box h2 {
+  font-size: 20px;
+  color: #50e3a4;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+.orientation-box p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #a3c7b8;
+  margin-bottom: 20px;
+}
+.orientation-box b {
+  color: #f5c842;
+}
+.orientation-btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.orientation-btn-row .btn-primary {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.orientation-btn-row .btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(140, 180, 165, 0.3);
+  color: #8cb4a5;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.orientation-btn-row .btn-ghost:active {
+  color: #50e3a4;
+  border-color: #50e3a4;
+}
+
+@media (orientation: landscape) and (max-width: 900px) {
+  #hud {
+    padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+  .brand-card { transform: scale(0.74); transform-origin: top left; }
+  .stats-board { transform: scale(0.74); transform-origin: top right; }
+  .unit-status { width: min(56vw, 470px); }
+  .bottom-bar { align-items: flex-end; }
+  #upgrade-overlay .progression-shell,
+  #medal-overlay .progression-shell {
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+  }
+}
+@media (orientation: landscape) and (max-width: 900px) and (max-height: 500px) {
+  .joystick-zone {
+    width: 108px !important;
+    height: 108px !important;
+    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    left: calc(14px + env(safe-area-inset-left)) !important;
+  }
+  .joystick-knob { width: 44px !important; height: 44px !important; }
+  .joystick-zone::after { font-size: 10px !important; bottom: -17px !important; }
+  .mobile-action-cluster {
+    bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+    right: calc(12px + env(safe-area-inset-right)) !important;
+    gap: 10px !important;
+  }
+  .mobile-btn.fire { width: 64px !important; height: 64px !important; }
+  .mobile-btn.fire span { font-size: 20px !important; }
+  .mobile-btn.sub { width: 42px !important; height: 42px !important; }
+  .mobile-btn.sub span { font-size: 15px !important; }
+  .mobile-top-bar {
+    top: calc(8px + env(safe-area-inset-top)) !important;
+    right: calc(10px + env(safe-area-inset-right)) !important;
+  }
+  .mobile-icon-btn { width: 34px !important; height: 34px !important; font-size: 14px !important; }
+  #ally-monitor {
+    top: calc(58px + env(safe-area-inset-top)) !important;
+    bottom: auto !important;
+    left: calc(10px + env(safe-area-inset-left)) !important;
+    min-width: 176px !important;
+  }
+  #tactical-support-hud {
+    top: calc(58px + env(safe-area-inset-top)) !important;
+    bottom: auto !important;
+    right: calc(10px + env(safe-area-inset-right)) !important;
+    width: 196px !important;
+  }
+  .panel { padding: 18px 22px !important; }
+  .panel-banner { height: 128px !important; }
+  .history-card { max-height: 64px !important; }
+  .progression-shell { padding: 14px 18px !important; }
+  .progression-shell h2 { font-size: 18px !important; margin: 0 0 6px !important; }
+  .upgrade-card { min-height: 84px !important; padding: 10px !important; }
+  .upgrade-card span { font-size: 11px !important; }
+  .medal { padding: 8px !important; }
+}
 </style>
 </head>
 <body>
+
+<div id="orientation-hint">
+  <div class="orientation-box">
+    <div class="phone-rotate-anim">
+      <svg viewBox="0 0 64 64" width="72" height="72" fill="none">
+        <rect x="18" y="8" width="28" height="48" rx="5" stroke="#50e3a4" stroke-width="2.5" fill="rgba(80,227,164,0.12)"/>
+        <line x1="28" y1="13" x2="36" y2="13" stroke="#50e3a4" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="32" cy="50" r="2.5" fill="#f5c842"/>
+        <path d="M 52 22 A 20 20 0 0 1 52 42" stroke="#f5c842" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="4 3"/>
+        <polygon points="50,44 56,40 54,48" fill="#f5c842"/>
+      </svg>
+    </div>
+    <h2>🛡️ 建议横屏作战</h2>
+    <p>为获得最广阔的 3D 全景视野与最佳双指走位触控手感，建议将手机旋转至<b>横屏模式</b>。</p>
+    <div class="orientation-btn-row">
+      <button id="lock-landscape-btn" class="btn-primary"><span>📱</span> 全屏横屏锁定</button>
+      <button id="dismiss-portrait-btn" class="btn-ghost">竖屏继续体验</button>
+    </div>
+  </div>
+</div>
 
 <div id="loading-screen" role="status" aria-live="polite">
   <div class="loading-panel">
@@ -672,6 +834,12 @@ h1 {
       <span class="music-icon">🎺</span>
       <span class="music-title">冲锋号</span>
       <button class="music-btn" id="bugle-trigger-btn" style="border-color:#ff7875;color:#ff7875;background:rgba(255,77,79,0.18)">吹响</button>
+    </div>
+
+    <div class="music-controller" id="fs-controller" title="点击切换全屏横屏模式" style="border-color:rgba(80,227,164,0.45);cursor:pointer;">
+      <span class="music-icon">⛶</span>
+      <span class="music-title">全屏横屏</span>
+      <button class="music-btn" id="fs-toggle-btn">锁定</button>
     </div>
 
     <div class="stats-board">
@@ -2364,6 +2532,7 @@ function ensureControlUi() {
       <button class="mobile-btn fire" id="mobile-fire-btn" title="主炮开火"><span>🔥</span><b>开火</b></button>
     </div>
     <div class="mobile-top-bar">
+      <button class="mobile-icon-btn" id="mobile-fullscreen-btn" title="全屏并锁定横屏">⛶</button>
       <button class="mobile-icon-btn" id="mobile-bugle-btn" title="吹响冲锋号">🎺</button>
       <button class="mobile-icon-btn" id="mobile-pause-btn" title="暂停游戏">⏸️</button>
     </div>
@@ -2392,6 +2561,10 @@ function ensureControlUi() {
   document.querySelector('#mobile-ult-btn').addEventListener('click', e => {
     e.stopPropagation();
     if (state.run) triggerUltimate();
+  });
+  document.querySelector('#mobile-fullscreen-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    requestLandscapeMode();
   });
   document.querySelector('#mobile-bugle-btn').addEventListener('click', e => {
     e.stopPropagation();
@@ -4192,10 +4365,57 @@ addEventListener('mousemove', e => {
   }
 });
 
+function requestLandscapeMode() {
+  const el = document.documentElement;
+  const requestFS = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen || el.mozRequestFullScreen;
+  if (requestFS) {
+    requestFS.call(el).then(() => {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    }).catch(() => {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    });
+  } else if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('landscape').catch(() => {});
+  }
+}
+
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  if (innerWidth > innerHeight) {
+    document.querySelector('#orientation-hint')?.classList.remove('dismissed');
+  }
+});
+
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+    if (innerWidth > innerHeight) {
+      document.querySelector('#orientation-hint')?.classList.remove('dismissed');
+    }
+  }, 200);
+});
+
+// 横屏引导按钮绑定
+document.querySelector('#lock-landscape-btn')?.addEventListener('click', () => {
+  requestLandscapeMode();
+  document.querySelector('#orientation-hint')?.classList.add('dismissed');
+});
+document.querySelector('#dismiss-portrait-btn')?.addEventListener('click', () => {
+  document.querySelector('#orientation-hint')?.classList.add('dismissed');
+});
+
+// 顶部全屏横屏按钮绑定
+document.querySelector('#fs-controller')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  requestLandscapeMode();
 });
 
 ensureTacticalHud();
