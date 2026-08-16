@@ -4024,10 +4024,11 @@ function reset() {
   player.turretAngle = 0;
   player.turretTarget = 0;
   player.aimWorldAngle = Math.PI;
-  player.turretWorldAngle = Math.PI;  // 初始化炮塔世界角度
+  player.turretWorldAngle = Math.PI;  // 初始化炮塔世界角度，默认朝向车头方向
   player.speed = 0;
   player.turnRate = 0;
   player.turret.rotation.y = 0;
+  touchControls.yawOffset = 0;  // 重置移动端视角偏移
   player.reload = 0;
   player.special = 0;
   player.weapon = 'standard';
@@ -4881,9 +4882,14 @@ function animate() {
   // 调整观察点，平衡俯视角度与瞄准准确性
   camera.lookAt(target.clone().add(aim.multiplyScalar(3.6)).add(new THREE.Vector3(0, 0.8 + touchControls.pitchOffset * 1.5, 0)));
 
-  // 移动端始终以屏幕中心的准星作为炮塔和地面落点的瞄准基准。
+  // 移动端通过视角偏移直接控制准星，炮塔跟随
   if (usesMobileAim()) {
-    updateAimFromScreenPoint(innerWidth / 2, innerHeight / 2);
+    // 移动端：视角偏移直接作为瞄准方向
+    player.aimWorldAngle = player.angle + touchControls.yawOffset;
+    // 更新地面准星位置
+    const aimDistance = 30;
+    const aimDir = new THREE.Vector3(-Math.sin(player.aimWorldAngle), 0, -Math.cos(player.aimWorldAngle));
+    reticleMesh.position.copy(player.o.position).add(aimDir.multiplyScalar(aimDistance));
   }
   // PC端通过鼠标移动事件更新准星，不在这里覆盖
 
